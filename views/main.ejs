@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi-Platform Downloader</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/11356/11356481.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <style>
+        /* Custom color palette based on background image */
+        :root {
+            --primary-color: #ff6f61; /* coral red */
+            --secondary-color: #f7c59f; /* soft peach */
+            --accent-color: #ffe066; /* warm yellow */
+            --background-color: #1a1a1a; /* dark background */
+            --text-color: #f0e6d2; /* light cream */
+            --button-hover: #ff4c3b;
+            --shadow-color: rgba(255, 111, 97, 0.6);
+        }
+
+        /* Reset and base styles */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-image: url("https://i.pinimg.com/originals/22/c2/65/22c2658ed96c7df29238f9ff5c97e8cd.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 50px 20px;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: hidden;
+        }
+
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 50px;
+            text-shadow: 0 0 15px var(--);
+            letter-spacing: 0.15em;
+            text-align: center;
+            user-select: none;
+            z-index: 2;
+            position: relative;
+            color: var(--accent-color); /* bright yellow for better contrast */
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        li {
+            margin: 0;
+        }
+
+        a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-color);
+            background: var(--primary-color);
+            padding: 18px 35px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 7px 20px var(--shadow-color);
+            transition: background-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease;
+            min-width: 180px;
+            justify-content: center;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        a::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
+            transform: translateX(-100%) translateY(-100%);
+            transition: transform 0.5s ease;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        a:hover::before {
+            transform: translateX(0) translateY(0);
+        }
+
+        a:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-7px);
+            box-shadow: 0 15px 35px var(--shadow-color);
+            z-index: 3;
+        }
+
+        /* Platform icons from Google Material Icons */
+        .material-icons {
+            font-size: 26px;
+            color: var(--accent-color);
+            user-select: none;
+            z-index: 3;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 900px) {
+            nav {
+                padding: 25px 40px;
+                max-width: 600px;
+            }
+            a {
+                min-width: 150px;
+                font-size: 1.1rem;
+                padding: 15px 25px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.5rem;
+                margin-bottom: 35px;
+            }
+            nav {
+                padding: 20px 25px;
+                max-width: 100%;
+                border-radius: 15px;
+            }
+            ul {
+                gap: 20px;
+            }
+            a {
+                min-width: 120px;
+                font-size: 1rem;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-Platform Downloader</h1>
+    <nav>
+        <ul>
+            <li><a href="/tiktok"><span class="material-icons">music_note</span>TikTok</a></li>
+            <li><a href="/youtube"><span class="material-icons">play_circle_filled</span>YouTube</a></li>
+            <li><a href="/facebook"><span class="material-icons">facebook</span>Facebook</a></li>
+            <li><a href="/instagram"><span class="material-icons">camera_alt</span>Instagram</a></li>
+            <li><a href="/twitter"><span class="material-icons">chat_bubble</span>Twitter</a></li>
+            <li><a href="/capcut"><span class="material-icons">movie</span>Capcut</a></li>
+            <li><a href="/pinterest"><span class="material-icons">push_pin</span>Pinterest</a></li>
+            <li><a href="/gdrive"><span class="material-icons">cloud</span>Google Drive</a></li>
+            <li><a href="/mediafire"><span class="material-icons">whatshot</span>Mediafire</a></li>
+            <li><a href="/spotify"><span class="material-icons">library_music</span>Spotify</a></li>
+        </ul>
+    </nav>
+</body>
+</html>

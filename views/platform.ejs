@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= platform.charAt(0).toUpperCase() + platform.slice(1) %> Downloader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #ff6f61; /* coral red */
+            --secondary-color: #f7c59f; /* soft peach */
+            --accent-color: #ffe066; /* warm yellow */
+            --background-color: #1a1a1a; /* dark background */
+            --text-color: #f0e6d2; /* light cream */
+            --button-hover: #ff4c3b;
+            --shadow-color: rgba(255, 111, 97, 0.6);
+        }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            /* background-image: url("https://i.pinimg.com/originals/2d/87/a5/2d87a5e2939a2345320821e72a0c17fb.jpg");seecond option */
+            background-image: url("https://i.pinimg.com/originals/22/c2/65/22c2658ed96c7df29238f9ff5c97e8cd.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 40px 20px;
+            overflow-x: hidden;
+            overflow-y: hidden;
+        }
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 15px var(--accent-color);
+            color: var(--accent-color);
+            text-align: center;
+            user-select: none;
+            position: relative;
+            z-index: 2;
+        }
+        p {
+            font-size: 1.2rem;
+            color: var(--text-color);
+            margin: 0 0 30px 0;
+            text-align: center;
+            user-select: none;
+            position: relative;
+            z-index: 2;
+        }
+        form {
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            box-shadow: 0 0 15px var(--shadow-color);
+            padding: 10px 20px;
+            backdrop-filter: blur(10px);
+        }
+        input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            padding: 10px 15px;
+            border-radius: 30px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            user-select: text;
+        }
+        button.download-btn {
+            background: var(--primary-color);
+            border: none;
+            color: var(--text-color);
+            font-weight: 700;
+            font-size: 1.2rem;
+            padding: 12px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 7px 20px var(--shadow-color);
+            transition: background-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease;
+            margin-left: 15px;
+            user-select: none;
+        }
+        button.download-btn:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px var(--shadow-color);
+            z-index: 3;
+        }
+        .icon-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            border: none;
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            user-select: none;
+            padding: 6px 10px;
+            border-radius: 20px;
+            transition: background-color 0.3s ease;
+            margin-left: 10px;
+        }
+        .icon-button:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        .material-icons {
+            font-size: 20px;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= platform.charAt(0).toUpperCase() + platform.slice(1) %> Downloader</h1>
+    <p>Use this page to download content from <%= platform.charAt(0).toUpperCase() + platform.slice(1) %>.</p>
+    <form id="downloadForm" method="POST" action="/<%= platform %>/download">
+        <div id="urlWarning" style="color: #ff4c3b; font-weight: 700; margin-bottom: 10px; display: none;">
+            Not a valid URL for <%= platform.charAt(0).toUpperCase() + platform.slice(1) %>.
+        </div>
+        <input type="text" id="urlInput" name="url" placeholder="Enter URL here" autocomplete="off" />
+        <button type="button" class="icon-button" id="pasteBtn" title="Paste from clipboard">
+            <span class="material-icons">content_paste</span> Paste
+        </button>
+        <button type="button" class="icon-button" id="clearBtn" title="Clear input" style="display:none;">
+            <span class="material-icons">clear</span> Clear
+        </button>
+        <button type="submit" class="download-btn" id="downloadBtn">Download</button>
+    </form>
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const urlWarning = document.getElementById('urlWarning');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        const platform = "<%= platform %>";
+
+        const platformUrlPatterns = {
+            instagram: /^https?:\/\/(www\.)?instagram\.com/i,
+            tiktok: /^https?:\/\/(www\.)?tiktok\.com/i,
+            youtube: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i,
+            pinterest: /^https?:\/\/(www\.)?pinterest\.com/i,
+            facebook: /^https?:\/\/(www\.)?facebook\.com/i,
+            twitter: /^https?:\/\/(www\.)?twitter\.com/i,
+            gdrive: /^https?:\/\/(drive\.google\.com)/i,
+            mediafire: /^https?:\/\/(www\.)?mediafire\.com/i,
+            capcut: /^https?:\/\/(www\.)?capcut\.com/i
+        };
+
+        function validateUrl() {
+            const url = urlInput.value.trim().toLowerCase();
+            if (url === '') {
+                urlWarning.style.display = 'none';
+                downloadBtn.disabled = false;
+                return;
+            }
+            // Extract domain substring from platformUrlPatterns keys
+            const domainMap = {
+                instagram: 'instagram.com',
+                tiktok: 'tiktok.com',
+                youtube: 'youtube.com',
+                pinterest: 'pinterest.com',
+                facebook: 'facebook.com',
+                twitter: 'twitter.com',
+                gdrive: 'google.com',
+                mediafire: 'mediafire.com',
+                capcut: 'capcut.com'
+            };
+            const domain = domainMap[platform];
+            if (!domain) {
+                urlWarning.style.display = 'none';
+                downloadBtn.disabled = false;
+                return;
+            }
+            if (url.includes(domain)) {
+                urlWarning.style.display = 'none';
+                downloadBtn.disabled = false;
+            } else {
+                urlWarning.style.display = 'block';
+                downloadBtn.disabled = true;
+            }
+        }
+
+        function toggleIcons() {
+            if (urlInput.value.trim() === '') {
+                pasteBtn.style.display = 'flex';
+                clearBtn.style.display = 'none';
+            } else {
+                pasteBtn.style.display = 'none';
+                clearBtn.style.display = 'flex';
+            }
+            validateUrl();
+        }
+
+        urlInput.addEventListener('input', toggleIcons);
+
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    urlInput.value = text.split('\\n')[0];
+                    toggleIcons();
+                }
+            } catch (err) {
+                alert('Failed to read clipboard contents: ' + err);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            urlInput.value = '';
+            toggleIcons();
+            urlInput.focus();
+        });
+
+        // Initialize icon visibility and validation on page load
+        toggleIcons();
+
+        // Add container for displaying thumbnail and download button
+    </script>
+
+    <div id="resultContainer" style="display:none; margin-top: 30px; max-width: 600px; background: rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 0 15px rgba(255, 111, 97, 0.6); padding: 20px; backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; height: 50vh; justify-content: center; margin-left: auto; margin-right: auto;">
+        <div id="thumbnailBox" style="width: 50vw; max-width: 600px; aspect-ratio: 9 / 16; background-color: black; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 15px; margin-bottom: 15px;">
+            <img id="thumbnailImage" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: contain;" />
+        </div>
+        <button id="downloadMediaBtn" style="background: var(--primary-color); border: none; color: var(--text-color); font-weight: 700; font-size: 1.2rem; padding: 12px 30px; border-radius: 30px; cursor: pointer; box-shadow: 0 7px 20px rgba(255, 111, 97, 0.6); transition: background-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease; user-select: none;">
+            Download Media
+        </button>
+    </div>
+
+    <script>
+        // Handle form submission with AJAX to get media and thumbnail info
+        document.getElementById('downloadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = 'Downloading...';
+
+            try {
+                const response = await fetch(`/${platform}/download`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    alert('Error: ' + errorText);
+                    downloadBtn.disabled = false;
+                    downloadBtn.textContent = 'Download';
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Show thumbnail or black placeholder
+                thumbnailImage.src = data.thumbnailFile;
+                thumbnailImage.alt = data.title || 'Thumbnail';
+
+                // Show result container
+                document.getElementById('resultContainer').style.display = 'flex';
+
+                // Set download button data
+                const downloadMediaBtn = document.getElementById('downloadMediaBtn');
+                downloadMediaBtn.dataset.mediaFile = data.mediaFile;
+                downloadMediaBtn.dataset.title = data.title || 'downloaded_media';
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download';
+            }
+        });
+
+        // Handle media download button click
+        document.getElementById('downloadMediaBtn').addEventListener('click', () => {
+            const downloadMediaBtn = document.getElementById('downloadMediaBtn');
+            const mediaFile = downloadMediaBtn.dataset.mediaFile;
+            const title = downloadMediaBtn.dataset.title;
+
+            if (!mediaFile) return;
+
+            // Create a temporary link to trigger download
+            const link = document.createElement('a');
+            link.href = mediaFile;
+            link.download = title;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Optionally, clear tmp folder by calling backend route
+            fetch('/clear-tmp', { method: 'POST' });
+        });
+    </script>
+</body>
+</html>
