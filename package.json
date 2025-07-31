@@ -16,8 +16,12 @@
     "chalk": "^5.4.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "mime-types": "^3.0.1"
+    "mime-types": "^3.0.1",
+    "path": "^0.12.7",
+    "url": "^0.11.4",
+    "xnxx-dl": "^1.0.4"
   },
   "devDependencies": {
+    "@justalk/pornhub-api": "^3.5.0"
   }
 }

@@ -37,7 +37,6 @@ const platformFunctions = {
   gdrive: gdrive,
   mediafire: mediafire,
   spotify: null // No function imported for spotify, handle accordingly
-  
 };
 
 app.get("/:platform", async (req, res) => {
@@ -72,10 +71,7 @@ async function downloadFile(fileUrl, filepath) {
   const response = await axios({
     url: fileUrl,
     method: 'GET',
-    responseType: 'stream',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    }
+    responseType: 'stream'
   });
   response.data.pipe(writer);
   return new Promise((resolve, reject) => {
@@ -182,13 +178,12 @@ app.post("/:platform/download", async (req, res) => {
     return res.redirect(`/error?message=${encodeURIComponent(`Download functionality for ${platform} is not implemented.`)}`);
   }
 
-    try {
+  try {
     console.log(chalk.blue(`[INFO] Starting download for platform: ${platform}, URL: ${url}`));
     const data = await downloadFunction(url);
     console.log(chalk.blue('[INFO] Download function returned data:'), data);
 
-    let mediaUrlMp4 = null;
-    let mediaUrlMp3 = null;
+    let mediaUrl = null;
     let thumbnailUrl = null;
     let title = null;
     let description = null;
@@ -196,48 +191,47 @@ app.post("/:platform/download", async (req, res) => {
     switch(platform) {
       case 'instagram':
         if (data.result && data.result.length > 0) {
-          mediaUrlMp4 = data.result[0].url;
+          mediaUrl = data.result[0].url;
           thumbnailUrl = data.result[0].thumbnail;
           title = 'instagram_media';
         }
         break;
       case 'tiktok':
-        mediaUrlMp4 = data.video && data.video.length > 0 ? data.video[0] : null;
+        mediaUrl = data.video && data.video.length > 0 ? data.video[0] : null;
         thumbnailUrl = data.thumbnail || null;
         title = data.title || 'tiktok_media';
         break;
       case 'twitter':
-        mediaUrlMp4 = data.url || null;
+        mediaUrl = data.url || null;
         thumbnailUrl = null;
         title = data.title || 'twitter_media';
         break;
       case 'youtube':
-        mediaUrlMp4 = data.mp4 || null;
-        mediaUrlMp3 = data.mp3 || null;
+        mediaUrl = data.mp4 || data.mp3 || null;
         thumbnailUrl = data.thumbnail || null;
         title = data.title || 'youtube_media';
         break;
       case 'facebook':
-        mediaUrlMp4 = data.HD || data.Normal_video || null;
+        mediaUrl = data.HD || data.Normal_video || null;
         thumbnailUrl = null;
         title = 'facebook_media';
         break;
       case 'mediafire':
         if (data.result && data.result.url) {
-          mediaUrlMp4 = data.result.url;
+          mediaUrl = data.result.url;
           thumbnailUrl = null;
           title = data.result.filename || 'mediafire_media';
         }
         break;
       case 'capcut':
-        mediaUrlMp4 = data.url || (data.data && data.data.contentUrl) || null;
+        mediaUrl = data.url || (data.data && data.data.contentUrl) || null;
         thumbnailUrl = (data.data && data.data.thumbnailUrl && data.data.thumbnailUrl[0]) || null;
         title = (data.data && data.data.name) || 'capcut_media';
         description = data.data && data.data.description || null;
         break;
       case 'gdrive':
         if (data.result) {
-          mediaUrlMp4 = data.result.downloadUrl || null;
+          mediaUrl = data.result.downloadUrl || null;
           thumbnailUrl = null;
           title = data.result.filename || 'gdrive_media';
         }
@@ -245,44 +239,31 @@ app.post("/:platform/download", async (req, res) => {
       case 'pinterest':
         if (data.result) {
           const pin = data.result;
-          mediaUrlMp4 = pin.video_url || pin.image || null;
+          mediaUrl = pin.video_url || pin.image || null;
           thumbnailUrl = pin.image; // Do not download thumbnail as per user request
           title = pin.title || 'pinterest_media';
           description = pin.description || null;
         }
         break;
       default:
-        mediaUrlMp4 = null;
-        mediaUrlMp3 = null;
+        mediaUrl = null;
         thumbnailUrl = null;
         title = null;
     }
 
-      if (!mediaUrlMp4 && !mediaUrlMp3) {
+      if (!mediaUrl) {
         console.error(chalk.red(`[ERROR] No media URL found in the download data for platform: ${platform}`));
         return res.redirect(`/error?message=${encodeURIComponent("No media URL found in the download data.")}`);
       }
 
-    console.log(chalk.blue(`[INFO] Extracted media MP4 URL: ${mediaUrlMp4}`));
-    console.log(chalk.blue(`[INFO] Extracted media MP3 URL: ${mediaUrlMp3}`));
+    console.log(chalk.blue(`[INFO] Extracted media URL: ${mediaUrl}`));
     console.log(chalk.blue(`[INFO] Extracted thumbnail URL: ${thumbnailUrl}`));
     console.log(chalk.blue(`[INFO] Extracted title: ${title}`));
 
-    let safeMediaFilenameMp4 = null;
-    let mediaFilePathMp4 = null;
-    if (mediaUrlMp4) {
-      safeMediaFilenameMp4 = await sanitizeFilename(title, mediaUrlMp4);
-      mediaFilePathMp4 = path.join(tmpDir, safeMediaFilenameMp4);
-      await downloadFile(mediaUrlMp4, mediaFilePathMp4);
-    }
+    const safeMediaFilename = await sanitizeFilename(title, mediaUrl);
+    const mediaFilePath = path.join(tmpDir, safeMediaFilename);
 
-    let safeMediaFilenameMp3 = null;
-    let mediaFilePathMp3 = null;
-    if (mediaUrlMp3) {
-      safeMediaFilenameMp3 = await sanitizeFilename(title, mediaUrlMp3);
-      mediaFilePathMp3 = path.join(tmpDir, safeMediaFilenameMp3);
-      await downloadFile(mediaUrlMp3, mediaFilePathMp3);
-    }
+    await downloadFile(mediaUrl, mediaFilePath);
 
     let thumbnailFilename = null;
     let thumbnailFilePath = null;
@@ -306,11 +287,10 @@ app.post("/:platform/download", async (req, res) => {
       }
     }
 
-    console.log(chalk.green(`[INFO] Sending response with media files: /tmp/${safeMediaFilenameMp4} (mp4), /tmp/${safeMediaFilenameMp3} (mp3) and thumbnail file: /tmp/${thumbnailFilename}`));
+    console.log(chalk.green(`[INFO] Sending response with media file: /tmp/${safeMediaFilename} and thumbnail file: /tmp/${thumbnailFilename}`));
     res.status(200).json({
       message: 'Media and thumbnail downloaded',
-      mediaFileMp4: mediaUrlMp4 ? '/tmp/' + safeMediaFilenameMp4 : null,
-      mediaFileMp3: mediaUrlMp3 ? '/tmp/' + safeMediaFilenameMp3 : null,
+      mediaFile: '/tmp/' + safeMediaFilename,
       thumbnailFile: '/tmp/' + thumbnailFilename,
       title: title,
       description: description
