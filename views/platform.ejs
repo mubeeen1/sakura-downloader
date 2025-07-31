@@ -150,13 +150,13 @@
         const platform = "<%= platform %>";
 
         const platformUrlPatterns = {
-            instagram: /^https?:\/\/(www\.)?instagram\.com/i,
-            tiktok: /^https?:\/\/(www\.)?tiktok\.com/i,
-            youtube: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i,
-            pinterest: /^https?:\/\/(www\.)?pinterest\.com/i,
-            facebook: /^https?:\/\/(www\.)?facebook\.com/i,
+            instagram: /^https?:\/\/(www\.)?(instagram\.com|instagr\.am)/i,
+            tiktok: /^https?:\/\/(www\.)?(tiktok\.com|vm\.tiktok\.com)/i,
+            youtube: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com|youtube-nocookie\.com)/i,
+            pinterest: /^https?:\/\/(www\.)?(pinterest\.com|pin\.it)/i,
+            facebook: /^https?:\/\/(www\.)?(facebook\.com|fb\.watch)/i,
             twitter: /^https?:\/\/(www\.)?twitter\.com/i,
-            gdrive: /^https?:\/\/(drive\.google\.com)/i,
+            gdrive: /^https?:\/\/(drive\.google\.com|docs\.google\.com)/i,
             mediafire: /^https?:\/\/(www\.)?mediafire\.com/i,
             capcut: /^https?:\/\/(www\.)?capcut\.com/i
         };
@@ -170,23 +170,24 @@
             }
             // Extract domain substring from platformUrlPatterns keys
             const domainMap = {
-                instagram: 'instagram.com',
-                tiktok: 'tiktok.com',
-                youtube: 'youtube.com',
-                pinterest: 'pinterest.com',
-                facebook: 'facebook.com',
-                twitter: 'twitter.com',
-                gdrive: 'google.com',
-                mediafire: 'mediafire.com',
-                capcut: 'capcut.com'
+                instagram: ['instagram.com', 'instagr.am'],
+                tiktok: ['tiktok.com', 'vm.tiktok.com'],
+                youtube: ['youtube.com', 'youtu.be', 'm.youtube.com', 'youtube-nocookie.com'],
+                pinterest: ['pinterest.com', 'pin.it'],
+                facebook: ['facebook.com', 'fb.watch'],
+                twitter: ['twitter.com'],
+                gdrive: ['drive.google.com', 'docs.google.com'],
+                mediafire: ['mediafire.com'],
+                capcut: ['capcut.com']
             };
-            const domain = domainMap[platform];
-            if (!domain) {
+            const domains = domainMap[platform];
+            if (!domains) {
                 urlWarning.style.display = 'none';
                 downloadBtn.disabled = false;
                 return;
             }
-            if (url.includes(domain)) {
+            const isValid = domains.some(domain => url.includes(domain));
+            if (isValid) {
                 urlWarning.style.display = 'none';
                 downloadBtn.disabled = false;
             } else {
@@ -262,7 +263,15 @@
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    alert('Error: ' + errorText);
+                    // Try to extract error message from HTML or show generic message
+                    let message = 'An error occurred during download.';
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(errorText, 'text/html');
+                    const errorElement = doc.querySelector('body') || doc.querySelector('h1') || doc.querySelector('p');
+                    if (errorElement) {
+                        message = errorElement.textContent.trim();
+                    }
+                    alert('Error: ' + message);
                     downloadBtn.disabled = false;
                     downloadBtn.textContent = 'Download';
                     return;
