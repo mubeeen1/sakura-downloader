@@ -1,12 +1,27 @@
-# 🚀 Multi-Downloader
+# 🌌✨ 𝕄𝕦𝕝𝕥𝕚-𝔻𝕠𝕨𝕟𝕝𝕠𝕒𝕕𝕖𝕣 🚀🕶️
 
 ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
 ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
 ![EJS](https://img.shields.io/badge/EJS-AE2F24?style=for-the-badge&logo=ejs&logoColor=white)
 
-An all-in-one media downloader web application built with Node.js and Express. This project provides a simple and clean user interface to download videos, images, and audio from a wide variety of popular platforms.
+```text
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║   ███╗   ███╗ █████╗ ██╗   ██╗████████╗██╗   ██╗██████╗     ║
+║   ████╗ ████║██╔══██╗██║   ██║╚══██╔══╝██║   ██║██╔══██╗    ║
+║   ██╔████╔██║███████║██║   ██║   ██║   ██║   ██║██████╔╝    ║
+║   ██║╚██╔╝██║██╔══██║██║   ██║   ██║   ██║   ██║██╔═══╝     ║
+║   ██║ ╚═╝ ██║██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║         ║
+║   ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝         ║
+║                                                            ║
+║      𝕐𝕠𝕦𝕣 𝕄𝕖𝕕𝕚𝕒 𝔻𝕠𝕨𝕟𝕝𝕠𝕒𝕕𝕖𝕣 𝕚𝕟 𝕒 𝕟𝕖𝕠𝕟 𝕔𝕪𝕓𝕖𝕣𝕡𝕦𝕟𝕜 𝕨𝕠𝕣𝕝𝕕 ⚡️🕶️      ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+```
 
-## ✨ Features
+Dive into the neon-lit streets of media downloading with **Multi-Downloader** — your ultimate cyberpunk toolkit to grab videos, images, and audio from the digital matrix. Powered by Node.js and Express, this sleek web app brings you a futuristic, user-friendly interface to hack the media world.
+
+## ✨⚡ Features That Glow in the Dark ⚡✨
 
 -   **User-Friendly Web Interface**: Easy to navigate, with dedicated pages for each platform.
 -   **Wide Platform Support**: Download media from your favorite sites.
