@@ -1,4 +1,4 @@
-# 🌌✨ 𝕄𝕦𝕝𝕥𝕚-𝔻𝕠𝕨𝕟𝕝𝕠𝕒𝕕𝕖𝕣 🚀🕶️
+# 🌸 Sakura-Downloader 🌸
 
 ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
 ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
@@ -7,14 +7,14 @@
 ```text
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   ███╗   ███╗ █████╗ ██╗   ██╗████████╗██╗   ██╗██████╗     ║
-║   ████╗ ████║██╔══██╗██║   ██║╚══██╔══╝██║   ██║██╔══██╗    ║
-║   ██╔████╔██║███████║██║   ██║   ██║   ██║   ██║██████╔╝    ║
-║   ██║╚██╔╝██║██╔══██║██║   ██║   ██║   ██║   ██║██╔═══╝     ║
-║   ██║ ╚═╝ ██║██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║         ║
-║   ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝         ║
+║    ███████╗ █████╗ ██╗  ██╗██╗   ██╗██████╗  ██████╗         ║
+║    ██╔════╝██╔══██╗██║ ██╔╝██║   ██║██╔══██╗██╔═══██╗        ║
+║    ███████╗███████║█████╔╝ ██║   ██║██████╔╝██║   ██║        ║
+║    ╚════██║██╔══██║██╔═██╗ ██║   ██║██╔══██╗██║   ██║        ║
+║    ███████║██║  ██║██║  ██╗╚██████╔╝██████╔╝╚██████╔╝        ║
+║    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝         ║
 ║                                                            ║
-║      𝕐𝕠𝕦𝕣 𝕄𝕖𝕕𝕚𝕒 𝔻𝕠𝕨𝕟𝕝𝕠𝕒𝕕𝕖𝕣 𝕚𝕟 𝕒 𝕟𝕖𝕠𝕟 𝕔𝕪𝕓𝕖𝕣𝕡𝕦𝕟𝕜 𝕨𝕠𝕣𝕝𝕕 ⚡️🕶️      ║
+║      Your Media Downloader in a world of falling petals 🌸   ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 ```
@@ -23,13 +23,13 @@ Dive into the neon-lit streets of media downloading with **Multi-Downloader** �
 
 ## ✨⚡ Features That Glow in the Dark ⚡✨
 
--   **User-Friendly Web Interface**: Easy to navigate, with dedicated pages for each platform.
--   **Wide Platform Support**: Download media from your favorite sites.
--   **Metadata Fetching**: Retrieves title, description, and thumbnail for a better user experience.
--   **Safe Filenames**: Automatically sanitizes filenames to prevent errors.
--   **Temporary File Management**: Downloads files to a temporary server location and provides a cleanup mechanism.
+-   🕹️ **User-Friendly Web Interface**: Navigate the digital grid with ease, dedicated pages for each platform.
+-   🌐 **Wide Platform Support**: Hack into your favorite sites and download media effortlessly.
+-   🧠 **Metadata Fetching**: Snatch titles, descriptions, and thumbnails for a slick preview.
+-   🔒 **Safe Filenames**: Auto-sanitized filenames to keep your downloads glitch-free.
+-   🗑️ **Temporary File Management**: Files live in a temporary server zone, cleaned up to keep the system lean.
 
-### Supported Platforms
+### Supported Platforms 🚀
 
 -   ✅ TikTok
 -   ✅ YouTube (Video & Audio)
@@ -41,52 +41,41 @@ Dive into the neon-lit streets of media downloading with **Multi-Downloader** �
 -   ✅ Google Drive
 -   ✅ MediaFire
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack — The Cyber Arsenal
 
--   **Backend**: Node.js, Express.js
--   **Template Engine**: EJS
--   **Core Downloader Library**: [btch-downloader](https://www.npmjs.com/package/btch-downloader)
--   **HTTP Client**: Axios
--   **Utilities**: `body-parser`, `chalk`, `mime-types`
+-   ⚙️ **Backend**: Node.js, Express.js
+-   🎭 **Template Engine**: EJS
+-   📦 **Core Downloader Library**: [btch-downloader](https://www.npmjs.com/package/btch-downloader)
+-   🌐 **HTTP Client**: Axios
+-   🛠️ **Utilities**: `body-parser`, `chalk`, `mime-types`
 
-## ⚙️ Installation
-
-To get a local copy up and running, follow these simple steps.
+## ⚙️ Installation — Jack Into the System
 
 ### Prerequisites
 
--   Node.js (v14 or higher recommended)
--   npm (comes with Node.js)
+-   ⚡ Node.js (v14 or higher recommended)
+-   📦 npm (comes with Node.js)
 
 ### Setup
 
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/mubeen1/sakura-downloader.git
-    cd multi-downloader
-    ```
+```bash
+git clone https://github.com/mubeen1/sakura-downloader.git
+cd multi-downloader
+npm install
+node index.js
+```
 
-2.  **Install NPM packages:**
-    ```sh
-    npm install
-    ```
+Open your browser and jack into the local server at `http://localhost:3000`.
 
-3.  **Run the server:**
-    ```sh
-    node index.js
-    ```
+## 🚀 Usage — Navigate the Neon Grid
 
-4.  **Open your browser** and navigate to `http://localhost:3000`.
+1.  From the homepage, click the icon of your target platform.
+2.  Get redirected to a dedicated download page (e.g., `/youtube`).
+3.  Paste the full media URL into the input field.
+4.  Hit the **Download** button.
+5.  Watch as the app hacks the link, fetches media, and displays a slick preview with title, description, and download button.
 
-## 🚀 Usage
-
-1.  From the homepage, click on the icon of the platform you wish to download from.
-2.  You will be redirected to a dedicated page for that platform (e.g., `/youtube`).
-3.  Paste the full URL of the media you want to download into the input field.
-4.  Click the "Download" button.
-5.  The application will process the link, fetch the media, and display a preview with the title, description, and a download button for the media file.
-
-## 📂 Project Structure
+## 📂 Project Structure — The Code Matrix
 
 ```
 multi-downloader/
@@ -103,19 +92,17 @@ multi-downloader/
 └── README.md
 ```
 
-## 🔧 How It Works
+## 🔧 How It Works — Behind the Neon Curtain
 
-The application follows a straightforward server-side download process:
+1.  🕵️‍♂️ **User Request**: Submit a URL through the platform-specific page.
+2.  ⚡ **API Call**: Frontend sends a `POST` request to `/:platform/download` with the URL.
+3.  🤖 **Scraping**: Server uses `btch-downloader` to extract direct media and thumbnail links plus metadata.
+4.  💾 **Temporary Download**: Media and thumbnails are downloaded to `/tmp` with sanitized filenames.
+5.  📡 **Response**: Server sends JSON with local paths to the downloaded files.
+6.  🎥 **Display & Download**: Client updates page with media preview and final download link.
+7.  🧹 **Serve & Clean**: Server serves the file and deletes it immediately to save space.
 
-1.  **User Request**: The user submits a URL through the web interface on a platform-specific page.
-2.  **API Call**: The frontend sends a `POST` request to the `/:platform/download` endpoint with the URL.
-3.  **Scraping**: The Express server uses the `btch-downloader` library to scrape the provided URL and extract direct download links for the media and its thumbnail, along with metadata like title and description.
-4.  **Temporary Download**: The server uses `axios` to download the media and thumbnail from the extracted URLs and saves them into a local `/tmp` directory with sanitized filenames.
-5.  **Response to Client**: The server sends a JSON response back to the client containing the local paths to the downloaded media and thumbnail (e.g., `/tmp/video.mp4`).
-6.  **Display & Download**: The client-side JavaScript dynamically updates the page to show the media preview, title, and a final download link pointing to the server's temporary file.
-7.  **Serve & Clean**: When the user clicks the final download link (`/download/:filename`), the server serves the file and immediately deletes it from the `/tmp` directory to save space.
-
-## 🛣️ API Endpoints
+## 🛣️ API Endpoints — The Command Console
 
 | Method | Route                      | Description                                                              |
 | :----- | :------------------------- | :----------------------------------------------------------------------- |
@@ -128,4 +115,50 @@ The application follows a straightforward server-side download process:
 
 ---
 
-Happy Downloading! ✨
+# 🐳 Docker Deployment
+
+Deploy your neon cyberpunk downloader anywhere with ease. This Docker container is optimized for platforms like Koyeb.
+
+```dockerfile
+# Use official Node.js 18 Alpine image for a lightweight container
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install --production
+
+# Install pm2 globally
+RUN npm install pm2 -g
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Start the app with pm2
+CMD ["pm2-runtime", "index.js"]
+```
+
+## 🐳 Running with Docker
+
+Build the Docker image:
+
+```bash
+docker build -t multi-downloader .
+```
+
+Run the Docker container:
+
+```bash
+docker run -p 3000:3000 multi-downloader
+```
+
+This will start the app inside the container using pm2 for better process management and reliability.
+
+---
+
+✨ Happy Downloading in the Neon Future! ⚡🕶️
