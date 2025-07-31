@@ -122,7 +122,44 @@
             font-size: 20px;
             user-select: none;
         }
-    </style>
+/* HTML: <div class="loader"></div> */
+.loader {
+  --s: 50px; /* increased from 25px to 50px for larger loader */
+  --g :5px;  
+  
+  width: calc(3*(1.353*var(--s) + var(--g)));
+  display: grid;
+  justify-items: end;
+  aspect-ratio: 3;
+  overflow: hidden;
+  --_m: linear-gradient(90deg,#0000,#000 15px calc(100% - 15px),#0000);
+  -webkit-mask: var(--_m);
+          mask: var(--_m);
+}
+.loader:before { 
+  content: "";
+  width: 200%;
+  background:
+    linear-gradient(90deg,#ff1818 50%,#0000 0),
+    conic-gradient(from -90deg at var(--s) calc(0.353*var(--s)),
+      #fff 135deg,#666 0 270deg,#aaa 0); 
+  background-blend-mode: multiply;
+  --_m:
+    linear-gradient(to bottom right,
+       #0000 calc(0.25*var(--s)),#000 0 calc(100% - calc(0.25*var(--s)) - 1.414*var(--g)),#0000 0),
+    conic-gradient(from -90deg at right var(--g) bottom var(--g),#000 90deg,#0000 0);
+  -webkit-mask: var(--_m);
+          mask: var(--_m);
+  background-size:   calc(100%/3) 100%, calc(100%/6) 100%;
+  -webkit-mask-size: calc(100%/6) 100%;
+          mask-size: calc(100%/6) 100%;
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
+  animation: l10 1s infinite linear;
+}
+@keyframes l10 {
+  to {transform:translate(calc(100%/3))}
+}    </style>
 </head>
 <body>
     <h1><%= platform.charAt(0).toUpperCase() + platform.slice(1) %> Downloader</h1>
@@ -140,12 +177,29 @@
         </button>
         <button type="submit" class="download-btn" id="downloadBtn">Download</button>
     </form>
+
+    <!-- Loading circle container -->
+    <div id="loadingIndicator" style="display:none; margin-top: 20px; text-align: center;">
+        <div class="loader"></div>
+    </div>
+
+    <div id="resultContainer" style="display:none; margin-top: 30px; max-width: 600px; background: rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 0 15px rgba(255, 111, 97, 0.6); padding: 20px; backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; height: 50vh; justify-content: center; margin-left: auto; margin-right: auto;">
+        <div id="thumbnailBox" style="width: 50vw; max-width: 600px; aspect-ratio: 9 / 16; background-color: black; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 15px; margin-bottom: 15px;">
+            <img id="thumbnailImage" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: contain;" />
+        </div>
+        <button id="downloadMediaBtn" style="background: var(--primary-color); border: none; color: var(--text-color); font-weight: 700; font-size: 1.2rem; padding: 12px 30px; border-radius: 30px; cursor: pointer; box-shadow: 0 7px 20px rgba(255, 111, 97, 0.6); transition: background-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease; user-select: none;">
+            Download Media
+        </button>
+    </div>
+
     <script>
         const urlInput = document.getElementById('urlInput');
         const pasteBtn = document.getElementById('pasteBtn');
         const clearBtn = document.getElementById('clearBtn');
         const urlWarning = document.getElementById('urlWarning');
         const downloadBtn = document.getElementById('downloadBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultContainer = document.getElementById('resultContainer');
 
         const platform = "<%= platform %>";
 
@@ -209,7 +263,7 @@
 
         urlInput.addEventListener('input', toggleIcons);
 
-        pasteBtn.addEventListener('click', async () => {
+pasteBtn.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
                 if (text) {
@@ -217,7 +271,7 @@
                     toggleIcons();
                 }
             } catch (err) {
-                alert('Failed to read clipboard contents: ' + err);
+                window.location.href = `/error?message=${encodeURIComponent('Failed to read clipboard contents: ' + err)}`;
             }
         });
 
@@ -230,25 +284,21 @@
         // Initialize icon visibility and validation on page load
         toggleIcons();
 
-        // Add container for displaying thumbnail and download button
-    </script>
+        // Ensure loader and result container are hidden on initial page load
+        loadingIndicator.style.display = 'none';
+        resultContainer.style.display = 'none';
 
-    <div id="resultContainer" style="display:none; margin-top: 30px; max-width: 600px; background: rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 0 15px rgba(255, 111, 97, 0.6); padding: 20px; backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; height: 50vh; justify-content: center; margin-left: auto; margin-right: auto;">
-        <div id="thumbnailBox" style="width: 50vw; max-width: 600px; aspect-ratio: 9 / 16; background-color: black; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 15px; margin-bottom: 15px;">
-            <img id="thumbnailImage" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: contain;" />
-        </div>
-        <button id="downloadMediaBtn" style="background: var(--primary-color); border: none; color: var(--text-color); font-weight: 700; font-size: 1.2rem; padding: 12px 30px; border-radius: 30px; cursor: pointer; box-shadow: 0 7px 20px rgba(255, 111, 97, 0.6); transition: background-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease; user-select: none;">
-            Download Media
-        </button>
-    </div>
-
-    <script>
         // Handle form submission with AJAX to get media and thumbnail info
         document.getElementById('downloadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const url = urlInput.value.trim();
             if (!url) return;
 
+            // Show loading indicator and hide result container
+            loadingIndicator.style.display = 'block';
+            resultContainer.style.display = 'none';
+
+            // Disable download button and change text
             downloadBtn.disabled = true;
             downloadBtn.textContent = 'Downloading...';
 
@@ -261,7 +311,7 @@
                     body: JSON.stringify({ url })
                 });
 
-                if (!response.ok) {
+if (!response.ok) {
                     const errorText = await response.text();
                     // Try to extract error message from HTML or show generic message
                     let message = 'An error occurred during download.';
@@ -271,29 +321,33 @@
                     if (errorElement) {
                         message = errorElement.textContent.trim();
                     }
-                    alert('Error: ' + message);
+                    window.location.href = `/error?message=${encodeURIComponent('Error: ' + message)}`;
                     downloadBtn.disabled = false;
                     downloadBtn.textContent = 'Download';
+                    loadingIndicator.style.display = 'none';
                     return;
                 }
 
                 const data = await response.json();
 
                 // Show thumbnail or black placeholder
+                const thumbnailImage = document.getElementById('thumbnailImage');
                 thumbnailImage.src = data.thumbnailFile;
                 thumbnailImage.alt = data.title || 'Thumbnail';
 
                 // Show result container
-                document.getElementById('resultContainer').style.display = 'flex';
+                resultContainer.style.display = 'flex';
 
                 // Set download button data
                 const downloadMediaBtn = document.getElementById('downloadMediaBtn');
                 downloadMediaBtn.dataset.mediaFile = data.mediaFile;
                 downloadMediaBtn.dataset.title = data.title || 'downloaded_media';
 
-            } catch (error) {
-                alert('Error: ' + error.message);
+} catch (error) {
+                window.location.href = `/error?message=${encodeURIComponent('Error: ' + error.message)}`;
             } finally {
+                // Hide loading indicator and enable download button
+                loadingIndicator.style.display = 'none';
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = 'Download';
             }
