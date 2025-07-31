@@ -16,7 +16,12 @@ app.get("/", (req, res) => {
 
 // New error route to render error.ejs with dynamic error message
 app.get("/error", (req, res) => {
-  const errorMessage = req.query.message || "An unknown error occurred.";
+  let errorMessage = req.query.message || "An unknown error occurred.";
+  try {
+    errorMessage = decodeURIComponent(errorMessage);
+  } catch (e) {
+    // If decoding fails, keep original message
+  }
   res.status(500).render('error', { errorMessage });
 });
 
