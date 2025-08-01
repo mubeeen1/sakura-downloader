@@ -1,67 +1,45 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const session = require("express-session");
 const {igdl, youtube, ttdl, pinterest, twitter, fbdown , gdrive, capcut, mediafire} = require("btch-downloader");
-const app = express();
-
-const port = 3000;
-
-// Middleware to parse JSON bodies
-app.use(bodyParser.json()); // For API requests
-app.use(bodyParser.urlencoded({ extended: true })); // For form submissions
-app.set('view engine', 'ejs');
-
-app.get("/", (req, res) => {
-  res.render('main');
-});
-
-// New error route to render error.ejs with dynamic error message
-app.get("/error", (req, res) => {
-  let errorMessage = req.query.message || "An unknown error occurred.";
-  try {
-    errorMessage = decodeURIComponent(errorMessage);
-  } catch (e) {
-    // If decoding fails, keep original message
-  }
-  res.status(500).render('error', { errorMessage });
-});
-
-// Supported platforms and their corresponding functions from btch-downloader
-const platformFunctions = {
-  tiktok: ttdl,
-  youtube: youtube,
-  facebook: fbdown,
-  instagram: igdl,
-  twitter: twitter,
-  capcut: capcut,
-  pinterest: pinterest,
-  gdrive: gdrive,
-  mediafire: mediafire,
-  spotify: null // No function imported for spotify, handle accordingly
-};
-
-app.get("/:platform", async (req, res) => {
-  const platform = req.params.platform.toLowerCase();
-
-  if (!platformFunctions.hasOwnProperty(platform)) {
-    return res.redirect(`/error?message=${encodeURIComponent("Platform not supported")}`);
-  }
-
-  // Render the platform page with dynamic h1
-  res.render("platform", { platform });
-});
-
-// Required modules
 const chalk = require('chalk').default;
 const mime = require('mime-types');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+const app = express();
+const port = 3000;
+
+// Middleware to parse JSON bodies
+app.use(bodyParser.json()); // For API requests
+app.use(bodyParser.urlencoded({ extended: true })); // For form submissions
+
+// Setup session middleware
+app.use(session({
+  secret: 'your-secret-key', // replace with a strong secret in production
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // set secure: true if using HTTPS
+}));
+
+app.set('view engine', 'ejs');
+
 const tmpDir = path.join(__dirname, 'tmp');
 
 // Ensure tmp directory exists
 if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir);
+}
+
+// Helper function to get session-specific tmp directory
+function getSessionTmpDir(req) {
+  const sessionID = req.sessionID;
+  const sessionTmpDir = path.join(tmpDir, sessionID);
+  if (!fs.existsSync(sessionTmpDir)) {
+    fs.mkdirSync(sessionTmpDir, { recursive: true });
+  }
+  return sessionTmpDir;
 }
 
 // Helper function to download a file from url and save to filepath
@@ -160,6 +138,45 @@ async function sanitizeFilename(title, mediaUrl) {
   return safeTitle + ext;
 }
 
+const platformFunctions = {
+  tiktok: ttdl,
+  youtube: youtube,
+  facebook: fbdown,
+  instagram: igdl,
+  twitter: twitter,
+  capcut: capcut,
+  pinterest: pinterest,
+  gdrive: gdrive,
+  mediafire: mediafire,
+  spotify: null // No function imported for spotify, handle accordingly
+};
+
+app.get("/", (req, res) => {
+  res.render('main');
+});
+
+// New error route to render error.ejs with dynamic error message
+app.get("/error", (req, res) => {
+  let errorMessage = req.query.message || "An unknown error occurred.";
+  try {
+    errorMessage = decodeURIComponent(errorMessage);
+  } catch (e) {
+    // If decoding fails, keep original message
+  }
+  res.status(500).render('error', { errorMessage });
+});
+
+// Render platform page
+app.get("/:platform", (req, res) => {
+  const platform = req.params.platform.toLowerCase();
+
+  if (!platformFunctions.hasOwnProperty(platform)) {
+    return res.redirect(`/error?message=${encodeURIComponent("Platform not supported")}`);
+  }
+
+  res.render("platform", { platform });
+});
+
 app.post("/:platform/download", async (req, res) => {
   const platform = req.params.platform.toLowerCase();
   const url = req.body.url;
@@ -251,17 +268,18 @@ app.post("/:platform/download", async (req, res) => {
         title = null;
     }
 
-      if (!mediaUrl) {
-        console.error(chalk.red(`[ERROR] No media URL found in the download data for platform: ${platform}`));
-        return res.redirect(`/error?message=${encodeURIComponent("No media URL found in the download data.")}`);
-      }
+    if (!mediaUrl) {
+      console.error(chalk.red(`[ERROR] No media URL found in the download data for platform: ${platform}`));
+      return res.redirect(`/error?message=${encodeURIComponent("No media URL found in the download data.")}`);
+    }
 
     console.log(chalk.blue(`[INFO] Extracted media URL: ${mediaUrl}`));
     console.log(chalk.blue(`[INFO] Extracted thumbnail URL: ${thumbnailUrl}`));
     console.log(chalk.blue(`[INFO] Extracted title: ${title}`));
 
     const safeMediaFilename = await sanitizeFilename(title, mediaUrl);
-    const mediaFilePath = path.join(tmpDir, safeMediaFilename);
+    const sessionTmpDir = getSessionTmpDir(req);
+    const mediaFilePath = path.join(sessionTmpDir, safeMediaFilename);
 
     await downloadFile(mediaUrl, mediaFilePath);
 
@@ -270,11 +288,11 @@ app.post("/:platform/download", async (req, res) => {
     if (thumbnailUrl) {
       const thumbExt = path.extname(thumbnailUrl.split('?')[0]) || '.jpg';
       thumbnailFilename = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_thumb' + thumbExt;
-      thumbnailFilePath = path.join(tmpDir, thumbnailFilename);
+      thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
       await downloadFile(thumbnailUrl, thumbnailFilePath);
     } else {
       thumbnailFilename = 'black_placeholder.png';
-      thumbnailFilePath = path.join(tmpDir, thumbnailFilename);
+      thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
       if (!fs.existsSync(thumbnailFilePath)) {
         // Use a static black image file as placeholder instead of canvas
         const blackPlaceholderPath = path.join(__dirname, 'public', 'images', 'black_placeholder.png');
@@ -287,11 +305,11 @@ app.post("/:platform/download", async (req, res) => {
       }
     }
 
-    console.log(chalk.green(`[INFO] Sending response with media file: /tmp/${safeMediaFilename} and thumbnail file: /tmp/${thumbnailFilename}`));
+    console.log(chalk.green(`[INFO] Sending response with media file: /tmp/${req.sessionID}/${safeMediaFilename} and thumbnail file: /tmp/${req.sessionID}/${thumbnailFilename}`));
     res.status(200).json({
       message: 'Media and thumbnail downloaded',
-      mediaFile: '/tmp/' + safeMediaFilename,
-      thumbnailFile: '/tmp/' + thumbnailFilename,
+      mediaFile: `/tmp/${req.sessionID}/${safeMediaFilename}`,
+      thumbnailFile: `/tmp/${req.sessionID}/${thumbnailFilename}`,
       title: title,
       description: description
     });
@@ -302,33 +320,38 @@ app.post("/:platform/download", async (req, res) => {
   }
 });
 
-// Serve files from tmp folder
-app.use('/tmp', express.static(tmpDir));
+// Serve files from session-specific tmp folders
+app.use('/tmp/:sessionID', (req, res, next) => {
+  const sessionID = req.params.sessionID;
+  if (sessionID !== req.sessionID) {
+    return res.status(403).send('Forbidden');
+  }
+  express.static(path.join(tmpDir, sessionID))(req, res, next);
+});
 
 // Route to clear tmp folder (optional, can be called after download)
 app.post('/clear-tmp', (req, res) => {
-  fs.readdir(tmpDir, (err, files) => {
+  const sessionTmpDir = getSessionTmpDir(req);
+  fs.readdir(sessionTmpDir, (err, files) => {
     if (err) {
       console.error(chalk.red('Error clearing tmp folder:'), err);
       return res.status(500).json({ message: 'Error clearing tmp folder' });
     }
     for (const file of files) {
-      fs.unlink(path.join(tmpDir, file), err => {
+      fs.unlink(path.join(sessionTmpDir, file), err => {
         if (err) console.error(chalk.red('Error deleting file:'), file, err);
       });
     }
-    console.log(chalk.green('Tmp folder cleared'));
+    console.log(chalk.green('Tmp folder cleared for session:', req.sessionID));
     res.json({ message: 'Tmp folder cleared' });
   });
 });
 
-// Middleware to serve tmp folder statically
-app.use('/tmp', express.static(tmpDir));
-
 // Middleware to auto-clean tmp folder after media download
 app.get('/download/:filename', (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join(tmpDir, filename);
+  const sessionTmpDir = getSessionTmpDir(req);
+  const filePath = path.join(sessionTmpDir, filename);
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
