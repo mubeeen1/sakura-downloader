@@ -2,7 +2,14 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const session = require("express-session");
 const {igdl, youtube, ttdl, pinterest, twitter, fbdown , gdrive, capcut, mediafire} = require("btch-downloader");
-const chalk = require('chalk').default;
+// Chalk v5 is ESM-only. Fall back gracefully in CommonJS to avoid runtime errors.
+let chalk;
+try {
+  chalk = require('chalk');
+  if (chalk && chalk.default) chalk = chalk.default;
+} catch (e) {
+  chalk = { red: (s)=>s, green: (s)=>s, yellow: (s)=>s, blue: (s)=>s };
+}
 const mime = require('mime-types');
 const axios = require('axios');
 const fs = require('fs');
@@ -42,26 +49,189 @@ function getSessionTmpDir(req) {
   return sessionTmpDir;
 }
 
+// Enhanced function to validate and sanitize media URLs
+async function validateMediaUrl(url) {
+  try {
+    // Handle redirect chains by following redirects
+    const response = await axios.head(url, { 
+      timeout: 15000,
+      maxRedirects: 5,
+      validateStatus: (status) => status < 400
+    });
+    
+    const contentType = response.headers['content-type'];
+    const contentLength = parseInt(response.headers['content-length'] || '0');
+    
+    // Enhanced media content type detection
+    const mediaTypes = [
+      'video/', 'audio/', 'image/', 
+      'application/octet-stream',
+      'application/mp4', 'application/x-mpegURL'
+    ];
+    
+    const isMedia = mediaTypes.some(type => 
+      contentType && contentType.toLowerCase().includes(type)
+    );
+    
+    if (isMedia) {
+      return { 
+        valid: true, 
+        contentType, 
+        finalUrl: response.request.res.responseUrl || url 
+      };
+    }
+    
+    // Check for suspicious HTML content
+    if (contentType && (
+      contentType.includes('text/html') || 
+      contentType.includes('text/plain') ||
+      contentType.includes('application/json')
+    )) {
+      return { valid: false, reason: 'URL points to HTML/text content instead of media' };
+    }
+    
+    // Check file size
+    if (contentLength > 0 && contentLength < 2048) {
+      return { valid: false, reason: 'File too small to be valid media' };
+    }
+    
+    return { valid: false, reason: 'Invalid content type: ' + contentType };
+  } catch (error) {
+    console.error(chalk.red(`[ERROR] Failed to validate URL: ${url}`), error.message);
+    return { valid: false, reason: error.message };
+  }
+}
+
+// Enhanced URL extraction with validation
+async function extractAndValidateMediaUrl(platform, data) {
+  let mediaUrl = null;
+  
+  // Platform-specific URL extraction with validation
+  switch(platform) {
+    case 'instagram':
+      if (data.result && data.result.length > 0) {
+        const url = data.result[0].url;
+        const validation = await validateMediaUrl(url);
+        if (validation.valid) {
+          mediaUrl = validation.finalUrl;
+        }
+      }
+      break;
+      
+    case 'tiktok':
+      const videoUrl = data.video && data.video.length > 0 ? data.video[0] : null;
+      if (videoUrl) {
+        const validation = await validateMediaUrl(videoUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'youtube':
+      const ytUrl = data.mp4 || data.mp3 || null;
+      if (ytUrl) {
+        const validation = await validateMediaUrl(ytUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'facebook':
+      const fbUrl = data.HD || data.Normal_video || null;
+      if (fbUrl) {
+        const validation = await validateMediaUrl(fbUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'twitter':
+      const twUrl = data.url || null;
+      if (twUrl) {
+        const validation = await validateMediaUrl(twUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'pinterest':
+      if (data.result) {
+        const pin = data.result;
+        const pinUrl = pin.video_url || pin.image || null;
+        if (pinUrl) {
+          const validation = await validateMediaUrl(pinUrl);
+          mediaUrl = validation.valid ? validation.finalUrl : null;
+        }
+      }
+      break;
+      
+    case 'capcut':
+      const capcutUrl = data.url || (data.data && data.data.contentUrl) || null;
+      if (capcutUrl) {
+        const validation = await validateMediaUrl(capcutUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'gdrive':
+      if (data.result && data.result.downloadUrl) {
+        const gdriveUrl = data.result.downloadUrl;
+        const validation = await validateMediaUrl(gdriveUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    case 'mediafire':
+      if (data.result && data.result.url) {
+        const mfUrl = data.result.url;
+        const validation = await validateMediaUrl(mfUrl);
+        mediaUrl = validation.valid ? validation.finalUrl : null;
+      }
+      break;
+      
+    default:
+      mediaUrl = null;
+  }
+  
+  return mediaUrl;
+}
+
 // Helper function to download a file from url and save to filepath
-async function downloadFile(fileUrl, filepath) {
+async function downloadFile(fileUrl, filepath, retries = 3) {
   console.log(chalk.blue(`[INFO] Downloading file from URL: ${fileUrl} to path: ${filepath}`));
+  
+  // Validate URL before downloading
+  const validation = await validateMediaUrl(fileUrl);
+  if (!validation.valid) {
+    throw new Error(`Invalid media URL: ${validation.reason}`);
+  }
+  
   const writer = fs.createWriteStream(filepath);
-  const response = await axios({
-    url: fileUrl,
-    method: 'GET',
-    responseType: 'stream'
-  });
-  response.data.pipe(writer);
-  return new Promise((resolve, reject) => {
-    writer.on('finish', () => {
-      console.log(chalk.green(`[INFO] Finished downloading file to: ${filepath}`));
-      resolve();
+  
+  try {
+    const response = await axios({
+      url: fileUrl,
+      method: 'GET',
+      responseType: 'stream',
+      timeout: 30000
     });
-    writer.on('error', (err) => {
-      console.error(chalk.red(`[ERROR] Error writing file to: ${filepath}`), err);
-      reject(err);
+    
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => {
+        console.log(chalk.green(`[INFO] Finished downloading file to: ${filepath}`));
+        resolve();
+      });
+      writer.on('error', (err) => {
+        console.error(chalk.red(`[ERROR] Error writing file to: ${filepath}`), err);
+        reject(err);
+      });
     });
-  });
+  } catch (error) {
+    if (retries > 0 && error.code !== 'ENOTFOUND') {
+      console.log(chalk.yellow(`[WARN] Download failed, retrying... (${retries} attempts left)`));
+      await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+      return downloadFile(fileUrl, filepath, retries - 1);
+    }
+    throw error;
+  }
 }
 
 async function sanitizeFilename(title, mediaUrl) {
@@ -79,8 +249,9 @@ async function sanitizeFilename(title, mediaUrl) {
   try {
     const urlObj = new URL(mediaUrl);
     ext = path.extname(urlObj.pathname);
-    // Validate extension with mime-types
-    if (!mime.extensions.includes(ext.replace('.', ''))) {
+    // Validate extension with mime-types: ensure ext like '.mp4' maps to a known mime type
+    const extNoDot = ext.replace('.', '');
+    if (!mime.lookup(extNoDot)) {
       ext = '';
     }
     if (!ext) {
@@ -95,24 +266,28 @@ async function sanitizeFilename(title, mediaUrl) {
     ext = '';
   }
 
-  // Additional check to avoid .html extension for media files
-  if (ext === '.html' || ext === '.htm') {
+  // Enhanced check to avoid .html extension for media files
+  if (ext === '.html' || ext === '.htm' || ext === '.php' || ext === '.asp' || ext === '.jsp') {
     try {
-      const headResp = await axios.head(mediaUrl);
-      const contentType = headResp.headers['content-type'];
-      if (contentType) {
+      const validation = await validateMediaUrl(mediaUrl);
+      if (validation.valid) {
+        const contentType = validation.contentType;
         if (contentType.startsWith('video/')) {
           ext = '.mp4';
         } else if (contentType.startsWith('audio/')) {
           ext = '.mp3';
         } else if (contentType.startsWith('image/')) {
           ext = '.jpg';
+        } else if (contentType.includes('application/octet-stream')) {
+          ext = '.bin';
         } else {
-          ext = '';
+          ext = '.mp4'; // Default fallback
         }
+      } else {
+        ext = '.mp4'; // Force mp4 for media files
       }
     } catch (e) {
-      ext = '';
+      ext = '.mp4'; // Force mp4 on error
     }
   }
 
@@ -120,12 +295,18 @@ async function sanitizeFilename(title, mediaUrl) {
   if (!ext) {
     if (mediaUrl) {
       try {
-        const headResp = await axios.head(mediaUrl);
-        const contentType = headResp.headers['content-type'];
-        if (contentType && contentType.startsWith('image/')) {
-          ext = '.jpg';
+        const validation = await validateMediaUrl(mediaUrl);
+        if (validation.valid) {
+          const contentType = validation.contentType;
+          if (contentType.startsWith('image/')) {
+            ext = '.jpg';
+          } else if (contentType.startsWith('audio/')) {
+            ext = '.mp3';
+          } else {
+            ext = '.mp4';
+          }
         } else {
-          ext = '.mp4';
+          ext = '.mp4'; // Default to mp4
         }
       } catch (e) {
         ext = '.mp4';
