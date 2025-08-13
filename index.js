@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json()); // For API requests
@@ -31,6 +31,9 @@ app.use(session({
 }));
 
 app.set('view engine', 'ejs');
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 const tmpDir = path.join(__dirname, 'tmp');
 
@@ -331,6 +334,11 @@ const platformFunctions = {
   mediafire: mediafire,
   spotify: null // No function imported for spotify, handle accordingly
 };
+
+// Health check endpoint for deployment platforms like Koyeb
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
 
 app.get("/", (req, res) => {
   res.render('main');
