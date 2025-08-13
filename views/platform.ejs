@@ -342,6 +342,7 @@ if (!response.ok) {
                 const downloadMediaBtn = document.getElementById('downloadMediaBtn');
                 downloadMediaBtn.dataset.mediaFile = data.mediaFile;
                 downloadMediaBtn.dataset.title = data.title || 'downloaded_media';
+                downloadMediaBtn.dataset.downloadFilename = data.downloadFilename || 'media.mp4';
 
 } catch (error) {
                 window.location.href = `/error?message=${encodeURIComponent('Error: ' + error.message)}`;
@@ -357,14 +358,17 @@ if (!response.ok) {
         document.getElementById('downloadMediaBtn').addEventListener('click', () => {
             const downloadMediaBtn = document.getElementById('downloadMediaBtn');
             const mediaFile = downloadMediaBtn.dataset.mediaFile;
-            const title = downloadMediaBtn.dataset.title;
+            const downloadFilename = downloadMediaBtn.dataset.downloadFilename;
 
-            if (!mediaFile) return;
+            if (!mediaFile || !downloadFilename) return;
 
+            // Use the download endpoint to ensure proper filename and headers
+            const downloadUrl = `/download/${encodeURIComponent(downloadFilename)}`;
+            
             // Create a temporary link to trigger download
             const link = document.createElement('a');
-            link.href = mediaFile;
-            link.download = title;
+            link.href = downloadUrl;
+            link.download = downloadFilename; // Use the filename with extension
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

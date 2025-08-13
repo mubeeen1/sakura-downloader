@@ -55,6 +55,29 @@ function getSessionTmpDir(req) {
 // Enhanced function to validate and sanitize media URLs
 async function validateMediaUrl(url) {
   try {
+    // Skip validation for known video platforms that require special handling
+    const trustedDomains = [
+      'googlevideo.com',
+      'redirector.googlevideo.com', 
+      'youtube.com',
+      'ytimg.com',
+      'fbcdn.net',
+      'cdninstagram.com',
+      'tiktokcdn.com'
+    ];
+    
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    
+    // Trust URLs from known video platforms
+    if (trustedDomains.some(domain => hostname.includes(domain))) {
+      return { 
+        valid: true, 
+        contentType: 'video/mp4', // Assume video for trusted domains
+        finalUrl: url 
+      };
+    }
+    
     // Handle redirect chains by following redirects
     const response = await axios.head(url, { 
       timeout: 15000,
@@ -500,7 +523,8 @@ app.post("/:platform/download", async (req, res) => {
       mediaFile: `/tmp/${req.sessionID}/${safeMediaFilename}`,
       thumbnailFile: `/tmp/${req.sessionID}/${thumbnailFilename}`,
       title: title,
-      description: description
+      description: description,
+      downloadFilename: safeMediaFilename // Include the actual filename with extension
     });
 
   } catch (error) {
@@ -536,28 +560,48 @@ app.post('/clear-tmp', (req, res) => {
   });
 });
 
-// Middleware to auto-clean tmp folder after media download
+// Enhanced media download endpoint that preserves original filenames
 app.get('/download/:filename', (req, res) => {
-  const filename = req.params.filename;
+  const filename = decodeURIComponent(req.params.filename);
   const sessionTmpDir = getSessionTmpDir(req);
   const filePath = path.join(sessionTmpDir, filename);
 
+  console.log(chalk.blue(`[INFO] Download request for file: ${filename} at path: ${filePath}`));
+
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      console.error(`[ERROR] File not found for download: ${filePath}`);
+      console.error(chalk.red(`[ERROR] File not found for download: ${filePath}`));
       return res.status(404).send('File not found');
     }
 
+    // Set proper headers for file download
+    const fileExtension = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    // Set appropriate content type based on file extension
+    if (fileExtension === '.mp4') contentType = 'video/mp4';
+    else if (fileExtension === '.mp3') contentType = 'audio/mpeg';
+    else if (['.jpg', '.jpeg'].includes(fileExtension)) contentType = 'image/jpeg';
+    else if (fileExtension === '.png') contentType = 'image/png';
+    else if (fileExtension === '.gif') contentType = 'image/gif';
+    else if (fileExtension === '.webm') contentType = 'video/webm';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    console.log(chalk.blue(`[INFO] Sending file with content-type: ${contentType}`));
+    
     res.download(filePath, filename, (err) => {
       if (err) {
-        console.error(`[ERROR] Error sending file: ${filePath}`, err);
+        console.error(chalk.red(`[ERROR] Error sending file: ${filePath}`), err);
       } else {
+        console.log(chalk.green(`[INFO] Successfully sent file: ${filename}`));
         // Delete the file after sending
-        fs.unlink(filePath, (err) => {
-          if (err) {
-            console.error(`[ERROR] Error deleting file after download: ${filePath}`, err);
+        fs.unlink(filePath, (unlinkErr) => {
+          if (unlinkErr) {
+            console.error(chalk.red(`[ERROR] Error deleting file after download: ${filePath}`), unlinkErr);
           } else {
-            console.log(`[INFO] Deleted file after download: ${filePath}`);
+            console.log(chalk.green(`[INFO] Deleted file after download: ${filePath}`));
           }
         });
       }
