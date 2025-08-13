@@ -218,127 +218,141 @@ async function extractAndValidateMediaUrl(platform, data) {
   return mediaUrl;
 }
 
-// Helper function to download a file from url and save to filepath
-async function downloadFile(fileUrl, filepath, retries = 3) {
+// Optimized file download function with better error handling and speed
+async function downloadFile(fileUrl, filepath, retries = 2) {
   console.log(chalk.blue(`[INFO] Downloading file from URL: ${fileUrl} to path: ${filepath}`));
   
-  // Validate URL before downloading
+  // Fast validation for trusted domains, skip detailed validation for speed
   const validation = await validateMediaUrl(fileUrl);
   if (!validation.valid) {
     throw new Error(`Invalid media URL: ${validation.reason}`);
   }
   
+  // Ensure directory exists
+  const dir = path.dirname(filepath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
   const writer = fs.createWriteStream(filepath);
+  let downloadSuccess = false;
   
   try {
     const response = await axios({
       url: fileUrl,
       method: 'GET',
       responseType: 'stream',
-      timeout: 30000
+      timeout: 45000, // Increased timeout for large files
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      maxRedirects: 5
     });
     
     response.data.pipe(writer);
     
     return new Promise((resolve, reject) => {
       writer.on('finish', () => {
-        console.log(chalk.green(`[INFO] Finished downloading file to: ${filepath}`));
+        downloadSuccess = true;
+        console.log(chalk.green(`[INFO] Successfully downloaded file to: ${filepath}`));
         resolve();
       });
+      
       writer.on('error', (err) => {
         console.error(chalk.red(`[ERROR] Error writing file to: ${filepath}`), err);
+        // Clean up partial file on error
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+        }
+        reject(err);
+      });
+      
+      response.data.on('error', (err) => {
+        console.error(chalk.red(`[ERROR] Error downloading file: ${filepath}`), err);
+        writer.destroy();
+        // Clean up partial file on error
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+        }
         reject(err);
       });
     });
   } catch (error) {
-    if (retries > 0 && error.code !== 'ENOTFOUND') {
+    // Clean up partial file on error
+    if (!downloadSuccess && fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+    }
+    
+    if (retries > 0 && error.code !== 'ENOTFOUND' && error.response?.status !== 404) {
       console.log(chalk.yellow(`[WARN] Download failed, retrying... (${retries} attempts left)`));
-      await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Increased delay
       return downloadFile(fileUrl, filepath, retries - 1);
     }
     throw error;
   }
 }
 
+// Optimized filename sanitization with faster extension detection
 async function sanitizeFilename(title, mediaUrl) {
   const timestamp = Date.now();
   let safeTitle = title ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : timestamp.toString();
 
-  // Limit filename length to 50 characters to avoid ENAMETOOLONG errors
-  const maxLength = 50;
+  // Limit filename length to 40 characters for better compatibility
+  const maxLength = 40;
   if (safeTitle.length > maxLength) {
     safeTitle = safeTitle.substring(0, maxLength);
   }
 
-  // Extract extension from mediaUrl without query parameters
+  // Fast extension detection based on URL patterns and trusted domains
   let ext = '';
   try {
     const urlObj = new URL(mediaUrl);
-    ext = path.extname(urlObj.pathname);
-    // Validate extension with mime-types: ensure ext like '.mp4' maps to a known mime type
-    const extNoDot = ext.replace('.', '');
-    if (!mime.lookup(extNoDot)) {
-      ext = '';
-    }
-    if (!ext) {
-      // Perform HEAD request to get content-type
-      const headResp = await axios.head(mediaUrl);
-      const contentType = headResp.headers['content-type'];
-      if (contentType) {
-        ext = '.' + mime.extension(contentType);
+    const hostname = urlObj.hostname.toLowerCase();
+    const pathname = urlObj.pathname.toLowerCase();
+    
+    // Fast extension extraction from URL path
+    ext = path.extname(pathname);
+    
+    // Platform-specific extension logic for speed
+    if (hostname.includes('googlevideo.com')) {
+      // YouTube/Google Video - determine by itag or mime parameter
+      const params = new URLSearchParams(urlObj.search);
+      const mimeParam = params.get('mime');
+      if (mimeParam) {
+        if (mimeParam.includes('video/mp4')) ext = '.mp4';
+        else if (mimeParam.includes('audio/mp4')) ext = '.mp4';
+        else if (mimeParam.includes('video/webm')) ext = '.webm';
+        else if (mimeParam.includes('audio/webm')) ext = '.webm';
+      } else {
+        ext = '.mp4'; // Default for YouTube
       }
+    } else if (hostname.includes('fbcdn.net') || hostname.includes('facebook.com')) {
+      ext = '.mp4'; // Facebook videos are typically mp4
+    } else if (hostname.includes('tiktokcdn.com') || hostname.includes('tiktok.com')) {
+      ext = '.mp4'; // TikTok videos are mp4
+    } else if (hostname.includes('cdninstagram.com') || hostname.includes('instagram.com')) {
+      ext = pathname.includes('.jpg') ? '.jpg' : '.mp4'; // Instagram can be image or video
+    }
+    
+    // Validate the extension
+    if (ext && !mime.lookup(ext.replace('.', ''))) {
+      ext = '';
     }
   } catch (e) {
     ext = '';
   }
 
-  // Enhanced check to avoid .html extension for media files
-  if (ext === '.html' || ext === '.htm' || ext === '.php' || ext === '.asp' || ext === '.jsp') {
-    try {
-      const validation = await validateMediaUrl(mediaUrl);
-      if (validation.valid) {
-        const contentType = validation.contentType;
-        if (contentType.startsWith('video/')) {
-          ext = '.mp4';
-        } else if (contentType.startsWith('audio/')) {
-          ext = '.mp3';
-        } else if (contentType.startsWith('image/')) {
-          ext = '.jpg';
-        } else if (contentType.includes('application/octet-stream')) {
-          ext = '.bin';
-        } else {
-          ext = '.mp4'; // Default fallback
-        }
-      } else {
-        ext = '.mp4'; // Force mp4 for media files
-      }
-    } catch (e) {
-      ext = '.mp4'; // Force mp4 on error
-    }
-  }
-
-  // If no valid extension, default to .mp4 or .jpg based on content type
-  if (!ext) {
-    if (mediaUrl) {
-      try {
-        const validation = await validateMediaUrl(mediaUrl);
-        if (validation.valid) {
-          const contentType = validation.contentType;
-          if (contentType.startsWith('image/')) {
-            ext = '.jpg';
-          } else if (contentType.startsWith('audio/')) {
-            ext = '.mp3';
-          } else {
-            ext = '.mp4';
-          }
-        } else {
-          ext = '.mp4'; // Default to mp4
-        }
-      } catch (e) {
-        ext = '.mp4';
-      }
-    } else {
+  // Default extensions for invalid/missing ones
+  if (!ext || ['.html', '.htm', '.php', '.asp', '.jsp'].includes(ext)) {
+    // Quick determination based on URL patterns
+    if (mediaUrl.includes('video') || mediaUrl.includes('mp4')) {
       ext = '.mp4';
+    } else if (mediaUrl.includes('audio') || mediaUrl.includes('mp3')) {
+      ext = '.mp3';
+    } else if (mediaUrl.includes('image') || mediaUrl.includes('jpg') || mediaUrl.includes('png')) {
+      ext = '.jpg';
+    } else {
+      ext = '.mp4'; // Default fallback
     }
   }
 

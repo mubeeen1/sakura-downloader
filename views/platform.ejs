@@ -373,8 +373,7 @@ if (!response.ok) {
             link.click();
             document.body.removeChild(link);
 
-            // Optionally, clear tmp folder by calling backend route
-            fetch('/clear-tmp', { method: 'POST' });
+            // Note: tmp folder cleanup is now handled automatically by the backend after successful download
         });
     </script>
 </body>
