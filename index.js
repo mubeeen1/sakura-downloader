@@ -421,6 +421,20 @@ app.post("/:platform/download", async (req, res) => {
     return res.redirect(`/error?message=${encodeURIComponent(`Download functionality for ${platform} is not implemented.`)}`);
   }
 
+  // Clear previous session data when new request is made
+  const sessionTmpDir = getSessionTmpDir(req);
+  try {
+    const files = fs.readdirSync(sessionTmpDir);
+    for (const file of files) {
+      const filePath = path.join(sessionTmpDir, file);
+      fs.unlinkSync(filePath);
+      console.log(chalk.yellow(`[INFO] Cleared previous file: ${file}`));
+    }
+  } catch (clearErr) {
+    // If clearing fails, just log and continue
+    console.log(chalk.yellow(`[WARN] Could not clear previous files: ${clearErr.message}`));
+  }
+
   try {
     console.log(chalk.blue(`[INFO] Starting download for platform: ${platform}, URL: ${url}`));
     const data = await downloadFunction(url);
@@ -610,14 +624,40 @@ app.get('/download/:filename', (req, res) => {
         console.error(chalk.red(`[ERROR] Error sending file: ${filePath}`), err);
       } else {
         console.log(chalk.green(`[INFO] Successfully sent file: ${filename}`));
-        // Delete the file after sending
+        // Delete the media file after sending
         fs.unlink(filePath, (unlinkErr) => {
           if (unlinkErr) {
-            console.error(chalk.red(`[ERROR] Error deleting file after download: ${filePath}`), unlinkErr);
+            console.error(chalk.red(`[ERROR] Error deleting media file after download: ${filePath}`), unlinkErr);
           } else {
-            console.log(chalk.green(`[INFO] Deleted file after download: ${filePath}`));
+            console.log(chalk.green(`[INFO] Deleted media file after download: ${filePath}`));
           }
         });
+        
+        // Clear entire session tmp directory after successful download
+        // This ensures all associated files (thumbnails, temp files) are cleaned up
+        const sessionTmpDir = path.dirname(filePath);
+        
+        // Use setTimeout to ensure file has been fully sent before cleanup
+        setTimeout(() => {
+          fs.readdir(sessionTmpDir, (readErr, files) => {
+            if (readErr) {
+              console.error(chalk.red(`[ERROR] Error reading session tmp directory for cleanup: ${sessionTmpDir}`), readErr);
+              return;
+            }
+            
+            // Delete all remaining files in session directory
+            files.forEach(file => {
+              const filePath = path.join(sessionTmpDir, file);
+              fs.unlink(filePath, (unlinkErr) => {
+                if (unlinkErr) {
+                  console.error(chalk.red(`[ERROR] Error deleting file during cleanup: ${filePath}`), unlinkErr);
+                } else {
+                  console.log(chalk.green(`[INFO] Cleaned up file: ${file}`));
+                }
+              });
+            });
+          });
+        }, 1000); // Wait 1 second to ensure download completed
       }
     });
   });
