@@ -18,8 +18,5 @@
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "mime-types": "^3.0.1"
-  },
-  "devDependencies": {
-    "@justalk/pornhub-api": "^3.5.0"
   }
 }
