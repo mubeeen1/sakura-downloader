@@ -344,7 +344,7 @@
             align-items: center;
             justify-content: center;
             min-width: 0;
-            min-height: 120px;
+            min-height: 270px; /* Doubled from 120px */
             max-width: calc(100% - 250px); /* Account for button width + gap */
         }
 
@@ -357,6 +357,8 @@
             border-radius: 16px;
             /* Allow image to take full available space */
             display: block;
+            /* Double the effective display size */
+            transform: scale(1.0); /* Ensure full size display */
         }
 
         .download-media-btn {

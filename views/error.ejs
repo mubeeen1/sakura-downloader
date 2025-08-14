@@ -255,7 +255,19 @@
         
         <div class="error-message">
             <i class="fas fa-exclamation-circle" style="color: #ff8a8a; margin-right: 0.5rem;"></i>
-            <%= errorMessage.split('\n')[1] || "Something went wrong in our beautiful garden. Let's get you back on track!" %>
+            <div class="error-lines">
+                <% 
+                const errorLines = errorMessage.split('\n').filter(line => line.trim());
+                const displayLines = errorLines.slice(0, 4);
+                if (displayLines.length === 0) {
+                %>
+                    <p>Something went wrong in our beautiful garden. Let's get you back on track!</p>
+                <% } else { %>
+                    <% displayLines.forEach((line, index) => { %>
+                        <p><%= line.trim() %></p>
+                    <% }); %>
+                <% } %>
+            </div>
         </div>
         
         <div class="error-actions">
