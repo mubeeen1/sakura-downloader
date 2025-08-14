@@ -55,15 +55,9 @@ function getSessionTmpDir(req) {
 // Enhanced function to validate and sanitize media URLs
 async function validateMediaUrl(url) {
   try {
-    // Skip validation for known video platforms that require special handling
     const trustedDomains = [
-      'googlevideo.com',
-      'redirector.googlevideo.com', 
-      'youtube.com',
-      'ytimg.com',
-      'fbcdn.net',
-      'cdninstagram.com',
-      'tiktokcdn.com'
+      'googlevideo.com', 'redirector.googlevideo.com', 'youtube.com', 'ytimg.com',
+      'fbcdn.net', 'cdninstagram.com', 'tiktokcdn.com'
     ];
     
     const urlObj = new URL(url);
@@ -71,59 +65,34 @@ async function validateMediaUrl(url) {
     
     // Trust URLs from known video platforms
     if (trustedDomains.some(domain => hostname.includes(domain))) {
-      return { 
-        valid: true, 
-        contentType: 'video/mp4', // Assume video for trusted domains
-        finalUrl: url 
-      };
+      return { valid: true, contentType: 'video/mp4', finalUrl: url };
     }
     
-    // Handle redirect chains by following redirects
     const response = await axios.head(url, { 
-      timeout: 15000,
-      maxRedirects: 5,
-      validateStatus: (status) => status < 400
+      timeout: 15000, maxRedirects: 5, validateStatus: (status) => status < 400
     });
     
     const contentType = response.headers['content-type'];
     const contentLength = parseInt(response.headers['content-length'] || '0');
     
-    // Enhanced media content type detection
-    const mediaTypes = [
-      'video/', 'audio/', 'image/', 
-      'application/octet-stream',
-      'application/mp4', 'application/x-mpegURL'
-    ];
-    
-    const isMedia = mediaTypes.some(type => 
-      contentType && contentType.toLowerCase().includes(type)
-    );
+    const mediaTypes = ['video/', 'audio/', 'image/', 'application/octet-stream', 'application/mp4', 'application/x-mpegURL'];
+    const isMedia = mediaTypes.some(type => contentType && contentType.toLowerCase().includes(type));
     
     if (isMedia) {
-      return { 
-        valid: true, 
-        contentType, 
-        finalUrl: response.request.res.responseUrl || url 
-      };
+      return { valid: true, contentType, finalUrl: response.request.res.responseUrl || url };
     }
     
-    // Check for suspicious HTML content
-    if (contentType && (
-      contentType.includes('text/html') || 
-      contentType.includes('text/plain') ||
-      contentType.includes('application/json')
-    )) {
+    if (contentType && (contentType.includes('text/html') || contentType.includes('text/plain') || contentType.includes('application/json'))) {
       return { valid: false, reason: 'URL points to HTML/text content instead of media' };
     }
     
-    // Check file size
     if (contentLength > 0 && contentLength < 2048) {
       return { valid: false, reason: 'File too small to be valid media' };
     }
     
     return { valid: false, reason: 'Invalid content type: ' + contentType };
   } catch (error) {
-    console.error(chalk.red(`[ERROR] Failed to validate URL: ${url}`), error.message);
+    console.log(chalk.red(`🌸 URL validation failed: ${error.message}`));
     return { valid: false, reason: error.message };
   }
 }
@@ -218,17 +187,16 @@ async function extractAndValidateMediaUrl(platform, data) {
   return mediaUrl;
 }
 
-// Optimized file download function with better error handling and speed
+// Optimized file download function with better error handling
 async function downloadFile(fileUrl, filepath, retries = 2) {
-  console.log(chalk.blue(`[INFO] Downloading file from URL: ${fileUrl} to path: ${filepath}`));
+  const filename = path.basename(filepath);
+  console.log(chalk.blue(`🌸 Downloading ${filename}...`));
   
-  // Fast validation for trusted domains, skip detailed validation for speed
   const validation = await validateMediaUrl(fileUrl);
   if (!validation.valid) {
-    throw new Error(`Invalid media URL: ${validation.reason}`);
+    throw new Error(`🍃 Invalid media URL: ${validation.reason}`);
   }
   
-  // Ensure directory exists
   const dir = path.dirname(filepath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -239,13 +207,8 @@ async function downloadFile(fileUrl, filepath, retries = 2) {
   
   try {
     const response = await axios({
-      url: fileUrl,
-      method: 'GET',
-      responseType: 'stream',
-      timeout: 45000, // Increased timeout for large files
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
+      url: fileUrl, method: 'GET', responseType: 'stream', timeout: 45000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       maxRedirects: 5
     });
     
@@ -254,48 +217,65 @@ async function downloadFile(fileUrl, filepath, retries = 2) {
     return new Promise((resolve, reject) => {
       writer.on('finish', () => {
         downloadSuccess = true;
-        console.log(chalk.green(`[INFO] Successfully downloaded file to: ${filepath}`));
+        console.log(chalk.green(`🌺 Downloaded: ${filename}`));
         resolve();
       });
       
       writer.on('error', (err) => {
-        console.error(chalk.red(`[ERROR] Error writing file to: ${filepath}`), err);
-        // Clean up partial file on error
-        if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
-        }
+        console.log(chalk.red(`🍃 Write error: ${err.message}`));
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
         reject(err);
       });
       
       response.data.on('error', (err) => {
-        console.error(chalk.red(`[ERROR] Error downloading file: ${filepath}`), err);
+        console.log(chalk.red(`🍃 Download error: ${err.message}`));
         writer.destroy();
-        // Clean up partial file on error
-        if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
-        }
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
         reject(err);
       });
     });
   } catch (error) {
-    // Clean up partial file on error
     if (!downloadSuccess && fs.existsSync(filepath)) {
       fs.unlinkSync(filepath);
     }
     
     if (retries > 0 && error.code !== 'ENOTFOUND' && error.response?.status !== 404) {
-      console.log(chalk.yellow(`[WARN] Download failed, retrying... (${retries} attempts left)`));
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Increased delay
+      console.log(chalk.yellow(`🌸 Retrying... (${retries} left)`));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       return downloadFile(fileUrl, filepath, retries - 1);
     }
     throw error;
   }
 }
 
-// Optimized filename sanitization with faster extension detection
+// Generate random alphanumeric string for unnamed media files
+function generateRandomName(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Optimized filename sanitization with random naming for static titles
 async function sanitizeFilename(title, mediaUrl) {
   const timestamp = Date.now();
-  let safeTitle = title ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : timestamp.toString();
+  
+  // Check if title is one of the static platform names and replace with random name
+  const staticTitles = [
+    'instagram_media', 'facebook_media', 'twitter_media', 'youtube_media', 
+    'tiktok_media', 'pinterest_media', 'capcut_media', 'gdrive_media', 'mediafire_media'
+  ];
+  
+  let safeTitle;
+  if (!title || staticTitles.includes(title)) {
+    // Generate random alphanumeric name of 7-10 characters
+    const randomLength = Math.floor(Math.random() * 4) + 7; // 7-10 characters
+    safeTitle = generateRandomName(randomLength);
+  } else {
+    safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  }
 
   // Limit filename length to 40 characters for better compatibility
   const maxLength = 40;
@@ -428,17 +408,16 @@ app.post("/:platform/download", async (req, res) => {
     for (const file of files) {
       const filePath = path.join(sessionTmpDir, file);
       fs.unlinkSync(filePath);
-      console.log(chalk.yellow(`[INFO] Cleared previous file: ${file}`));
+    console.log(chalk.yellow(`🌸 Cleared: ${file}`));
     }
   } catch (clearErr) {
-    // If clearing fails, just log and continue
-    console.log(chalk.yellow(`[WARN] Could not clear previous files: ${clearErr.message}`));
+    console.log(chalk.yellow(`🍃 Clear failed: ${clearErr.message}`));
   }
 
   try {
-    console.log(chalk.blue(`[INFO] Starting download for platform: ${platform}, URL: ${url}`));
+    console.log(chalk.blue(`🌸 Starting ${platform} download...`));
     const data = await downloadFunction(url);
-    console.log(chalk.blue('[INFO] Download function returned data:'), data);
+    console.log(chalk.blue('🌸 Download data received'));
 
     let mediaUrl = null;
     let thumbnailUrl = null;
@@ -509,13 +488,13 @@ app.post("/:platform/download", async (req, res) => {
     }
 
     if (!mediaUrl) {
-      console.error(chalk.red(`[ERROR] No media URL found in the download data for platform: ${platform}`));
+      console.log(chalk.red(`🍃 No media URL found for ${platform}`));
       return res.redirect(`/error?message=${encodeURIComponent("No media URL found in the download data.")}`);
     }
 
-    console.log(chalk.blue(`[INFO] Extracted media URL: ${mediaUrl}`));
-    console.log(chalk.blue(`[INFO] Extracted thumbnail URL: ${thumbnailUrl}`));
-    console.log(chalk.blue(`[INFO] Extracted title: ${title}`));
+    console.log(chalk.blue(`🌸 Media URL extracted`));
+    if (thumbnailUrl) console.log(chalk.blue(`🌸 Thumbnail URL extracted`));
+    console.log(chalk.blue(`🌸 Title: ${title || 'default'}`));
 
     const safeMediaFilename = await sanitizeFilename(title, mediaUrl);
     const sessionTmpDir = getSessionTmpDir(req);
@@ -527,11 +506,15 @@ app.post("/:platform/download", async (req, res) => {
     let thumbnailFilePath = null;
     if (thumbnailUrl) {
       const thumbExt = path.extname(thumbnailUrl.split('?')[0]) || '.jpg';
-      thumbnailFilename = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_thumb' + thumbExt;
+      // Use random naming for thumbnails as well to ensure uniqueness
+      const randomThumbName = generateRandomName(8);
+      thumbnailFilename = randomThumbName + '_thumb' + thumbExt;
       thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
       await downloadFile(thumbnailUrl, thumbnailFilePath);
     } else {
-      thumbnailFilename = 'black_placeholder.png';
+      // Use random name for placeholder as well to avoid caching issues
+      const randomPlaceholderName = generateRandomName(8);
+      thumbnailFilename = randomPlaceholderName + '_placeholder.png';
       thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
       if (!fs.existsSync(thumbnailFilePath)) {
         // Use a static black image file as placeholder instead of canvas
@@ -539,13 +522,15 @@ app.post("/:platform/download", async (req, res) => {
         if (fs.existsSync(blackPlaceholderPath)) {
           fs.copyFileSync(blackPlaceholderPath, thumbnailFilePath);
         } else {
-          // If static file not found, create an empty file as fallback
-          fs.writeFileSync(thumbnailFilePath, '');
+          // If static file not found, create a simple black PNG
+          // Create a minimal 1x1 black PNG as fallback
+          const blackPngData = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0x1D, 0x01, 0x01, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x02, 0x9A, 0x5C, 0x18, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+          fs.writeFileSync(thumbnailFilePath, blackPngData);
         }
       }
     }
 
-    console.log(chalk.green(`[INFO] Sending response with media file: /tmp/${req.sessionID}/${safeMediaFilename} and thumbnail file: /tmp/${req.sessionID}/${thumbnailFilename}`));
+    console.log(chalk.green(`🌺 Response ready: media & thumbnail`));
     res.status(200).json({
       message: 'Media and thumbnail downloaded',
       mediaFile: `/tmp/${req.sessionID}/${safeMediaFilename}`,
@@ -556,7 +541,7 @@ app.post("/:platform/download", async (req, res) => {
     });
 
   } catch (error) {
-    console.error(chalk.red(`[ERROR] Error downloading from ${platform} with URL ${url}:`), error);
+    console.log(chalk.red(`🍃 ${platform} download failed: ${error.message}`));
     res.redirect(`/error?message=${encodeURIComponent(error.message || "Error processing download request.")}`);
   }
 });
@@ -594,11 +579,11 @@ app.get('/download/:filename', (req, res) => {
   const sessionTmpDir = getSessionTmpDir(req);
   const filePath = path.join(sessionTmpDir, filename);
 
-  console.log(chalk.blue(`[INFO] Download request for file: ${filename} at path: ${filePath}`));
+  console.log(chalk.blue(`🌸 Download request: ${filename}`));
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      console.error(chalk.red(`[ERROR] File not found for download: ${filePath}`));
+      console.log(chalk.red(`🍃 File not found: ${filename}`));
       return res.status(404).send('File not found');
     }
 
@@ -617,19 +602,19 @@ app.get('/download/:filename', (req, res) => {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     
-    console.log(chalk.blue(`[INFO] Sending file with content-type: ${contentType}`));
+    console.log(chalk.blue(`🌸 Sending ${contentType} file...`));
     
     res.download(filePath, filename, (err) => {
       if (err) {
-        console.error(chalk.red(`[ERROR] Error sending file: ${filePath}`), err);
+        console.log(chalk.red(`🍃 Send error: ${err.message}`));
       } else {
-        console.log(chalk.green(`[INFO] Successfully sent file: ${filename}`));
+        console.log(chalk.green(`🌺 File sent: ${filename}`));
         // Delete the media file after sending
         fs.unlink(filePath, (unlinkErr) => {
           if (unlinkErr) {
-            console.error(chalk.red(`[ERROR] Error deleting media file after download: ${filePath}`), unlinkErr);
+            console.log(chalk.red(`🍃 Delete error: ${unlinkErr.message}`));
           } else {
-            console.log(chalk.green(`[INFO] Deleted media file after download: ${filePath}`));
+            console.log(chalk.green(`🌸 Deleted: ${filename}`));
           }
         });
         

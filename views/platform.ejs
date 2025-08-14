@@ -324,8 +324,11 @@
             animation: fadeInUp 0.5s ease-out;
             position: relative;
             z-index: 10;
-            /* Flex container for perfect centering */
-            flex-direction: column;
+        }
+
+        .result-content {
+            display: flex;
+            gap: 1.5rem;
             align-items: center;
             justify-content: center;
         }
@@ -334,18 +337,23 @@
             background: rgba(0, 0, 0, 0.3);
             border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 1.5rem;
             position: relative;
-            max-width: 400px;
-            width: 100%;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+            min-height: 120px;
         }
 
         .media-thumbnail {
-            width: 100%;
+            max-width: 200px;
+            max-height: 200px;
+            width: auto;
             height: auto;
-            max-height: 300px;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 16px;
+            /* Add unique cache-busting parameter to force reload */
         }
 
         .download-media-btn {
@@ -451,6 +459,58 @@
                 margin-bottom: 1rem;
                 display: inline-flex;
             }
+            
+            .result-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .media-preview {
+                min-width: auto;
+                min-height: auto;
+            }
+            
+            .media-thumbnail {
+                max-width: 150px;
+                max-height: 150px;
+            }
+            
+            .download-media-btn {
+                width: 100%;
+                margin: 0;
+            }
+            
+            .input-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+                padding: 0.8rem;
+            }
+            
+            .action-btn {
+                justify-content: center;
+                padding: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .platform-title {
+                font-size: 2rem;
+            }
+            
+            .download-card {
+                padding: 1rem;
+            }
+            
+            .url-input-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .input-actions {
+                border-top: 1px solid var(--border-color);
+                padding-top: 0.8rem;
+                margin-top: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -521,13 +581,15 @@
 
     <!-- Result Container -->
     <div class="result-container" id="resultContainer">
-        <div class="media-preview">
-            <img id="thumbnailImage" src="" alt="Media Thumbnail" class="media-thumbnail" />
+        <div class="result-content">
+            <div class="media-preview">
+                <img id="thumbnailImage" src="" alt="Media Thumbnail" class="media-thumbnail" />
+            </div>
+            <button id="downloadMediaBtn" class="download-media-btn">
+                <i class="fas fa-download"></i>
+                Download Media
+            </button>
         </div>
-        <button id="downloadMediaBtn" class="download-media-btn">
-            <i class="fas fa-download"></i>
-            Download Media
-        </button>
     </div>
 
     <script>
@@ -668,10 +730,21 @@ if (!response.ok) {
 
                 const data = await response.json();
 
-                // Show thumbnail or black placeholder
+                // Show thumbnail or black placeholder with cache busting
                 const thumbnailImage = document.getElementById('thumbnailImage');
-                thumbnailImage.src = data.thumbnailFile;
+                const cacheBuster = Date.now() + Math.random().toString(36).substr(2, 9);
+                thumbnailImage.src = data.thumbnailFile + '?v=' + cacheBuster;
                 thumbnailImage.alt = data.title || 'Thumbnail';
+                
+                // Force image reload by removing and re-adding to DOM
+                const parent = thumbnailImage.parentNode;
+                const newImage = thumbnailImage.cloneNode(true);
+                parent.removeChild(thumbnailImage);
+                parent.appendChild(newImage);
+                
+                // Update reference to new image element
+                document.getElementById('thumbnailImage').id = '';
+                newImage.id = 'thumbnailImage';
 
                 // Show result container
                 resultContainer.style.display = 'flex';
