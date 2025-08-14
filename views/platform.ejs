@@ -335,31 +335,29 @@
         }
 
         .media-preview {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            overflow: hidden;
-            position: relative;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 0;
-            min-height: 270px; /* Doubled from 120px */
-            max-width: calc(100% - 250px); /* Account for button width + gap */
-        }
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 270px;
+    max-width: calc(100% - 250px);
+}
 
-        .media-thumbnail {
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            border-radius: 16px;
-            /* Allow image to take full available space */
-            display: block;
-            /* Double the effective display size */
-            transform: scale(1.0); /* Ensure full size display */
-        }
+.media-thumbnail {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 16px;
+    display: block;
+    transform: scale(1.0);
+}
 
         .download-media-btn {
             background: var(--success-gradient);
@@ -451,73 +449,87 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-            
-            .download-card {
-                padding: 1.5rem;
-            }
-            
-            .back-btn {
-                position: static;
-                margin-bottom: 1rem;
-                display: inline-flex;
-            }
-            
-            .result-content {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .media-preview {
-                min-width: 0;
-                min-height: 120px;
-            }
-            
-            .media-thumbnail {
-                max-width: 150px;
-                max-height: 150px;
-            }
-            
-            .download-media-btn {
-                width: 100%;
-                margin: 0;
-            }
-            
-            .input-actions {
-                flex-direction: column;
-                gap: 0.5rem;
-                padding: 0.8rem;
-            }
-            
-            .action-btn {
-                justify-content: center;
-                padding: 0.8rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .platform-title {
-                font-size: 2rem;
-            }
-            
-            .download-card {
-                padding: 1rem;
-            }
-            
-            .url-input-container {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .input-actions {
-                border-top: 1px solid var(--border-color);
-                padding-top: 0.8rem;
-                margin-top: 0.5rem;
-            }
-        }
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    .download-card {
+        padding: 1.5rem;
+    }
+    
+    .back-btn {
+        position: static;
+        margin-bottom: 1rem;
+        display: inline-flex;
+    }
+    
+    .result-content {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+    
+    .media-preview {
+        min-width: 100%;
+        max-width: 100%;
+        min-height: 300px; /* Increased from 120px */
+        width: 100%;
+    }
+    
+    .media-thumbnail {
+        max-width: 100%;
+        max-height: 300px; /* Increased from 150px */
+        width: auto;
+        height: auto;
+    }
+    
+    .download-media-btn {
+        width: 100%;
+        margin: 0;
+        align-self: stretch;
+    }
+    
+    .input-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.8rem;
+    }
+    
+    .action-btn {
+        justify-content: center;
+        padding: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-title {
+        font-size: 2rem;
+    }
+    
+    .download-card {
+        padding: 1rem;
+    }
+    
+    .media-preview {
+        min-height: 250px; /* Maintain good height even on small screens */
+    }
+    
+    .media-thumbnail {
+        max-height: 250px;
+    }
+    
+    .url-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .input-actions {
+        border-top: 1px solid var(--border-color);
+        padding-top: 0.8rem;
+        margin-top: 0.5rem;
+    }
+}
     </style>
 </head>
 <body>
