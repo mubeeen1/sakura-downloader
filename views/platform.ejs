@@ -330,7 +330,8 @@
             display: flex;
             gap: 1.5rem;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .media-preview {
@@ -338,22 +339,24 @@
             border-radius: 16px;
             overflow: hidden;
             position: relative;
-            flex: 0 0 auto;
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 120px;
+            min-width: 0;
             min-height: 120px;
+            max-width: calc(100% - 250px); /* Account for button width + gap */
         }
 
         .media-thumbnail {
-            max-width: 200px;
-            max-height: 200px;
+            max-width: 100%;
+            max-height: 100%;
             width: auto;
             height: auto;
             object-fit: contain;
             border-radius: 16px;
-            /* Add unique cache-busting parameter to force reload */
+            /* Allow image to take full available space */
+            display: block;
         }
 
         .download-media-btn {
@@ -373,12 +376,13 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            /* Fixed button dimensions for consistency */
+            /* Stuck to right side with fixed dimensions */
             width: 220px;
             height: 56px;
             flex-shrink: 0;
             white-space: nowrap;
-            margin: 0 auto;
+            margin: 0;
+            align-self: center;
         }
 
         .download-media-btn::before {
