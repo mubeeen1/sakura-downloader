@@ -448,7 +448,42 @@
             }
         }
 
-        /* Responsive */
+ /* Responsive Design - Handles all aspect ratios gracefully */
+@media (max-width: 1024px) {
+    .result-content {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+    
+    .media-preview {
+        min-width: 100%;
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+        /* Dynamic height based on content */
+        min-height: 200px;
+        max-height: 70vh; /* Responsive to viewport */
+    }
+    
+    .media-thumbnail {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        /* Let the image determine its own size within container */
+        min-width: auto;
+        min-height: auto;
+    }
+    
+    .download-media-btn {
+        width: 100%;
+        margin: 0;
+        align-self: stretch;
+    }
+}
+
 @media (max-width: 768px) {
     body {
         padding: 1rem;
@@ -464,30 +499,34 @@
         display: inline-flex;
     }
     
-    .result-content {
-        flex-direction: column;
-        gap: 1.5rem;
-        align-items: stretch;
-    }
-    
+    /* Aspect ratio aware container */
     .media-preview {
-        min-width: 100%;
-        max-width: 100%;
-        min-height: 300px; /* Increased from 120px */
-        width: 100%;
+        min-height: 250px;
+        max-height: 60vh;
+        padding: 1rem;
+        /* Better background for thumbnail visibility */
+        background: rgba(0, 0, 0, 0.4);
     }
     
+    /* Responsive thumbnail that adapts to aspect ratios */
     .media-thumbnail {
+        /* For 16:9 landscape - constrain by width */
         max-width: 100%;
-        max-height: 300px; /* Increased from 150px */
+        /* For 9:16 portrait - constrain by height */
+        max-height: 55vh;
+        /* For 1:1 square - balanced constraints */
         width: auto;
         height: auto;
+        object-fit: contain;
+        object-position: center;
+        /* Minimum size for very small images */
+        min-width: 150px;
+        min-height: 150px;
     }
     
     .download-media-btn {
-        width: 100%;
-        margin: 0;
-        align-self: stretch;
+        padding: 1.2rem 2rem;
+        font-size: 1rem;
     }
     
     .input-actions {
@@ -512,11 +551,17 @@
     }
     
     .media-preview {
-        min-height: 250px; /* Maintain good height even on small screens */
+        min-height: 200px;
+        max-height: 50vh;
+        padding: 0.8rem;
     }
     
+    /* Optimized for small screens */
     .media-thumbnail {
-        max-height: 250px;
+        max-width: 100%;
+        max-height: 45vh;
+        min-width: 120px;
+        min-height: 120px;
     }
     
     .url-input-container {
@@ -528,6 +573,30 @@
         border-top: 1px solid var(--border-color);
         padding-top: 0.8rem;
         margin-top: 0.5rem;
+    }
+}
+
+/* Landscape orientation handling */
+@media (max-width: 768px) and (orientation: landscape) {
+    .media-preview {
+        max-height: 70vh;
+    }
+    
+    .media-thumbnail {
+        max-height: 65vh;
+        max-width: 90%;
+    }
+}
+
+/* Portrait orientation handling */
+@media (max-width: 768px) and (orientation: portrait) {
+    .media-preview {
+        max-height: 50vh;
+    }
+    
+    .media-thumbnail {
+        max-height: 45vh;
+        max-width: 85%;
     }
 }
     </style>
