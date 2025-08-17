@@ -335,31 +335,29 @@
         }
 
         .media-preview {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            overflow: hidden;
-            position: relative;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 0;
-            min-height: 270px; /* Doubled from 120px */
-            max-width: calc(100% - 250px); /* Account for button width + gap */
-        }
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 270px;
+    max-width: calc(100% - 250px);
+}
 
-        .media-thumbnail {
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            border-radius: 16px;
-            /* Allow image to take full available space */
-            display: block;
-            /* Double the effective display size */
-            transform: scale(1.0); /* Ensure full size display */
-        }
+.media-thumbnail {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 16px;
+    display: block;
+    transform: scale(1.0);
+}
 
         .download-media-btn {
             background: var(--success-gradient);
@@ -450,74 +448,157 @@
             }
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-            
-            .download-card {
-                padding: 1.5rem;
-            }
-            
-            .back-btn {
-                position: static;
-                margin-bottom: 1rem;
-                display: inline-flex;
-            }
-            
-            .result-content {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .media-preview {
-                min-width: auto;
-                min-height: auto;
-            }
-            
-            .media-thumbnail {
-                max-width: 150px;
-                max-height: 150px;
-            }
-            
-            .download-media-btn {
-                width: 100%;
-                margin: 0;
-            }
-            
-            .input-actions {
-                flex-direction: column;
-                gap: 0.5rem;
-                padding: 0.8rem;
-            }
-            
-            .action-btn {
-                justify-content: center;
-                padding: 0.8rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .platform-title {
-                font-size: 2rem;
-            }
-            
-            .download-card {
-                padding: 1rem;
-            }
-            
-            .url-input-container {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .input-actions {
-                border-top: 1px solid var(--border-color);
-                padding-top: 0.8rem;
-                margin-top: 0.5rem;
-            }
-        }
+ /* Responsive Design - Handles all aspect ratios gracefully */
+@media (max-width: 1024px) {
+    .result-content {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+    
+    .media-preview {
+        min-width: 100%;
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+        /* Dynamic height based on content */
+        min-height: 200px;
+        max-height: 70vh; /* Responsive to viewport */
+    }
+    
+    .media-thumbnail {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        /* Let the image determine its own size within container */
+        min-width: auto;
+        min-height: auto;
+    }
+    
+    .download-media-btn {
+        width: 100%;
+        margin: 0;
+        align-self: stretch;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    .download-card {
+        padding: 1.5rem;
+    }
+    
+    .back-btn {
+        position: static;
+        margin-bottom: 1rem;
+        display: inline-flex;
+    }
+    
+    /* Aspect ratio aware container */
+    .media-preview {
+        min-height: 250px;
+        max-height: 60vh;
+        padding: 1rem;
+        /* Better background for thumbnail visibility */
+        background: rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Responsive thumbnail that adapts to aspect ratios */
+    .media-thumbnail {
+        /* For 16:9 landscape - constrain by width */
+        max-width: 100%;
+        /* For 9:16 portrait - constrain by height */
+        max-height: 55vh;
+        /* For 1:1 square - balanced constraints */
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        object-position: center;
+        /* Minimum size for very small images */
+        min-width: 150px;
+        min-height: 150px;
+    }
+    
+    .download-media-btn {
+        padding: 1.2rem 2rem;
+        font-size: 1rem;
+    }
+    
+    .input-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.8rem;
+    }
+    
+    .action-btn {
+        justify-content: center;
+        padding: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-title {
+        font-size: 2rem;
+    }
+    
+    .download-card {
+        padding: 1rem;
+    }
+    
+    .media-preview {
+        min-height: 200px;
+        max-height: 50vh;
+        padding: 0.8rem;
+    }
+    
+    /* Optimized for small screens */
+    .media-thumbnail {
+        max-width: 100%;
+        max-height: 45vh;
+        min-width: 120px;
+        min-height: 120px;
+    }
+    
+    .url-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .input-actions {
+        border-top: 1px solid var(--border-color);
+        padding-top: 0.8rem;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Landscape orientation handling */
+@media (max-width: 768px) and (orientation: landscape) {
+    .media-preview {
+        max-height: 70vh;
+    }
+    
+    .media-thumbnail {
+        max-height: 65vh;
+        max-width: 90%;
+    }
+}
+
+/* Portrait orientation handling */
+@media (max-width: 768px) and (orientation: portrait) {
+    .media-preview {
+        max-height: 50vh;
+    }
+    
+    .media-thumbnail {
+        max-height: 45vh;
+        max-width: 85%;
+    }
+}
     </style>
 </head>
 <body>
@@ -615,7 +696,7 @@
             youtube: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com|youtube-nocookie\.com)/i,
             pinterest: /^https?:\/\/(www\.)?(pinterest\.com|pin\.it)/i,
             facebook: /^https?:\/\/(www\.)?(facebook\.com|fb\.watch)/i,
-            twitter: /^https?:\/\/(www\.)?twitter\.com/i,
+            twitter: /^https?:\/\/x\.com/i,
             gdrive: /^https?:\/\/(drive\.google\.com|docs\.google\.com)/i,
             mediafire: /^https?:\/\/(www\.)?mediafire\.com/i,
             capcut: /^https?:\/\/(www\.)?capcut\.com/i

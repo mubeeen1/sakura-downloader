@@ -96,7 +96,198 @@ async function validateMediaUrl(url) {
     return { valid: false, reason: error.message };
   }
 }
+// Enhanced YouTube download handling with better headers and fallback logic
+async function downloadYouTubeFile(fileUrl, filepath, retries = 3) {
+  const filename = path.basename(filepath);
+  console.log(chalk.blue(`🌸 Downloading YouTube ${filename}...`));
+  
+  const dir = path.dirname(filepath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
+  // Enhanced headers specifically for YouTube/Google Video
+  const youtubeHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'identity',
+    'Range': 'bytes=0-',
+    'Connection': 'keep-alive',
+    'Sec-Fetch-Dest': 'video',
+    'Sec-Fetch-Mode': 'no-cors',
+    'Sec-Fetch-Site': 'cross-site',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  };
+  
+  // Check if it's a YouTube/Google Video URL
+  const isYoutube = fileUrl.includes('googlevideo.com') || fileUrl.includes('youtube.com');
+  const headers = isYoutube ? youtubeHeaders : {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+  
+  const writer = fs.createWriteStream(filepath);
+  let downloadSuccess = false;
+  
+  try {
+    const response = await axios({
+      url: fileUrl,
+      method: 'GET',
+      responseType: 'stream',
+      timeout: 60000, // Increased timeout for YouTube
+      headers: headers,
+      maxRedirects: 10, // Increased redirects
+      validateStatus: (status) => status < 400 || status === 416, // Accept 416 (Range Not Satisfiable)
+    });
+    
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => {
+        downloadSuccess = true;
+        console.log(chalk.green(`🌺 Downloaded: ${filename}`));
+        resolve();
+      });
+      
+      writer.on('error', (err) => {
+        console.log(chalk.red(`🍃 Write error: ${err.message}`));
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        reject(err);
+      });
+      
+      response.data.on('error', (err) => {
+        console.log(chalk.red(`🍃 Download error: ${err.message}`));
+        writer.destroy();
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        reject(err);
+      });
+    });
+  } catch (error) {
+    if (!downloadSuccess && fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+    }
+    
+    // Enhanced retry logic for YouTube
+    if (retries > 0) {
+      const shouldRetry = 
+        error.response?.status === 403 || 
+        error.response?.status === 429 || 
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message.includes('timeout');
+        
+      if (shouldRetry) {
+        const waitTime = isYoutube ? 3000 + (Math.random() * 2000) : 2000; // Random delay for YouTube
+        console.log(chalk.yellow(`🌸 Retrying YouTube download... (${retries} left) - waiting ${Math.round(waitTime/1000)}s`));
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return downloadYouTubeFile(fileUrl, filepath, retries - 1);
+      }
+    }
+    
+    throw error;
+  }
+}
 
+// Enhanced YouTube data extraction with better URL validation
+async function handleYouTubeDownload(data, sessionTmpDir, req) {
+  try {
+    // Try different quality options in order of preference
+    const videoUrls = [
+      data.mp4,           // Primary MP4
+      data.video?.mp4,    // Alternative MP4
+      data.audio?.mp3,    // Fallback to audio
+      data.mp3            // Direct MP3
+    ].filter(Boolean);
+    
+    if (videoUrls.length === 0) {
+      throw new Error('No valid download URLs found in YouTube data');
+    }
+    
+    let mediaUrl = null;
+    let downloadError = null;
+    
+    // Try each URL until one works
+    for (const url of videoUrls) {
+      try {
+        console.log(chalk.blue(`🌸 Trying YouTube URL: ${url.substring(0, 100)}...`));
+        
+        // Quick validation
+        const validation = await validateMediaUrl(url);
+        if (!validation.valid) {
+          console.log(chalk.yellow(`🍃 URL validation failed: ${validation.reason}`));
+          continue;
+        }
+        
+        mediaUrl = validation.finalUrl;
+        break;
+      } catch (err) {
+        console.log(chalk.yellow(`🍃 URL failed: ${err.message}`));
+        downloadError = err;
+        continue;
+      }
+    }
+    
+    if (!mediaUrl) {
+      throw downloadError || new Error('All YouTube download URLs failed validation');
+    }
+    
+    const title = data.title || 'youtube_media';
+    const thumbnailUrl = data.thumbnail;
+    
+    console.log(chalk.blue(`🌸 YouTube URL validated successfully`));
+    
+    // Generate filename and download
+    const safeMediaFilename = await sanitizeFilename(title, mediaUrl);
+    const mediaFilePath = path.join(sessionTmpDir, safeMediaFilename);
+    
+    // Use the enhanced YouTube download function
+    await downloadYouTubeFile(mediaUrl, mediaFilePath);
+    
+    // Handle thumbnail
+    let thumbnailFilename = null;
+    let thumbnailFilePath = null;
+    
+    if (thumbnailUrl) {
+      try {
+        const thumbExt = path.extname(thumbnailUrl.split('?')[0]) || '.jpg';
+        const randomThumbName = generateRandomName(8);
+        thumbnailFilename = randomThumbName + '_thumb' + thumbExt;
+        thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
+        await downloadFile(thumbnailUrl, thumbnailFilePath); // Use regular download for thumbnails
+      } catch (thumbError) {
+        console.log(chalk.yellow(`🍃 Thumbnail download failed: ${thumbError.message}`));
+        thumbnailUrl = null; // Will create placeholder
+      }
+    }
+    
+    if (!thumbnailUrl || !thumbnailFilePath) {
+      const randomPlaceholderName = generateRandomName(8);
+      thumbnailFilename = randomPlaceholderName + '_placeholder.png';
+      thumbnailFilePath = path.join(sessionTmpDir, thumbnailFilename);
+      
+      const blackPlaceholderPath = path.join(__dirname, 'public', 'images', 'black_placeholder.png');
+      if (fs.existsSync(blackPlaceholderPath)) {
+        fs.copyFileSync(blackPlaceholderPath, thumbnailFilePath);
+      } else {
+        const blackPngData = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0x1D, 0x01, 0x01, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x02, 0x9A, 0x5C, 0x18, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+        fs.writeFileSync(thumbnailFilePath, blackPngData);
+      }
+    }
+    
+    return {
+      mediaFile: `/tmp/${req.sessionID}/${safeMediaFilename}`,
+      thumbnailFile: `/tmp/${req.sessionID}/${thumbnailFilename}`,
+      title: title,
+      description: data.description || null,
+      downloadFilename: safeMediaFilename
+    };
+    
+  } catch (error) {
+    console.log(chalk.red(`🍃 YouTube processing failed: ${error.message}`));
+    throw error;
+  }
+}
 // Enhanced URL extraction with validation
 async function extractAndValidateMediaUrl(platform, data) {
   let mediaUrl = null;
@@ -121,14 +312,17 @@ async function extractAndValidateMediaUrl(platform, data) {
       }
       break;
       
-    case 'youtube':
-      const ytUrl = data.mp4 || data.mp3 || null;
-      if (ytUrl) {
-        const validation = await validateMediaUrl(ytUrl);
-        mediaUrl = validation.valid ? validation.finalUrl : null;
-      }
-      break;
-      
+    
+case 'youtube':
+  try {
+    const youtubeResult = await handleYouTubeDownload(data, sessionTmpDir, req);
+    console.log(chalk.green(`🌺 YouTube response ready: media & thumbnail`));
+    return res.status(200).json(youtubeResult);
+  } catch (ytError) {
+    console.log(chalk.red(`🍃 YouTube download failed: ${ytError.message}`));
+    return res.redirect(`/error?message=${encodeURIComponent('YouTube download failed: ' + ytError.message)}`);
+  }
+  break;
     case 'facebook':
       const fbUrl = data.HD || data.Normal_video || null;
       if (fbUrl) {
@@ -187,7 +381,6 @@ async function extractAndValidateMediaUrl(platform, data) {
   return mediaUrl;
 }
 
-// Optimized file download function with better error handling
 async function downloadFile(fileUrl, filepath, retries = 2) {
   const filename = path.basename(filepath);
   console.log(chalk.blue(`🌸 Downloading ${filename}...`));
@@ -202,13 +395,27 @@ async function downloadFile(fileUrl, filepath, retries = 2) {
     fs.mkdirSync(dir, { recursive: true });
   }
   
+  // Check if this is a YouTube/Google Video URL
+  const isYoutube = fileUrl.includes('googlevideo.com') || fileUrl.includes('youtube.com');
+  
+  if (isYoutube) {
+    // Use the specialized YouTube download function
+    return downloadYouTubeFile(fileUrl, filepath, 3);
+  }
+  
+  // Regular download for non-YouTube URLs
   const writer = fs.createWriteStream(filepath);
   let downloadSuccess = false;
   
   try {
     const response = await axios({
-      url: fileUrl, method: 'GET', responseType: 'stream', timeout: 45000,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      url: fileUrl, 
+      method: 'GET', 
+      responseType: 'stream', 
+      timeout: 45000,
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
+      },
       maxRedirects: 5
     });
     
@@ -246,8 +453,7 @@ async function downloadFile(fileUrl, filepath, retries = 2) {
     }
     throw error;
   }
-}
-
+        }
 // Generate random alphanumeric string for unnamed media files
 function generateRandomName(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
