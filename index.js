@@ -358,7 +358,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.render('main');
+  res.render('maintenance');
 });
 
 // New error route to render error.ejs with dynamic error message
