@@ -6,13 +6,48 @@ let chalk;
 try {
   chalk = require('chalk');
   if (chalk && chalk.default) chalk = chalk.default;
+  // Test if chalk is working properly
+  if (!chalk.red || typeof chalk.red !== 'function') {
+    throw new Error('Chalk not functioning properly');
+  }
 } catch (e) {
-  // Fallback if chalk is not available
-  chalk = { 
-    red: (s)=>s, green: (s)=>s, yellow: (s)=>s, blue: (s)=>s, 
-    cyan: (s)=>s, magenta: (s)=>s, gray: (s)=>s, white: (s)=>s,
-    bold: (s)=>s, dim: (s)=>s
+  // Fallback if chalk is not available or not working
+  const createChalkFallback = () => {
+    const identity = (s) => s;
+    const chalkObj = {
+      red: identity,
+      green: identity,
+      yellow: identity,
+      blue: identity,
+      cyan: identity,
+      magenta: identity,
+      gray: identity,
+      white: identity,
+      bold: identity,
+      dim: identity
+    };
+    
+    // Add chaining support
+    Object.keys(chalkObj).forEach(color => {
+      chalkObj[color].bold = identity;
+      chalkObj[color].dim = identity;
+    });
+    
+    // Add bold with color support
+    chalkObj.bold.red = identity;
+    chalkObj.bold.green = identity;
+    chalkObj.bold.yellow = identity;
+    chalkObj.bold.blue = identity;
+    chalkObj.bold.cyan = identity;
+    chalkObj.bold.magenta = identity;
+    chalkObj.bold.gray = identity;
+    chalkObj.bold.white = identity;
+    
+    return chalkObj;
   };
+  
+  chalk = createChalkFallback();
+  console.log('⚠️  Using chalk fallback - colors will not be displayed');
 }
 const axios = require('axios');
 const fs = require('fs');
@@ -33,22 +68,40 @@ const logger = (req, res, next) => {
     const status = res.statusCode;
     
     // Enhanced log formatting with colors
-    const timeStr = chalk.gray(`[${timestamp}]`);
-    const methodStr = chalk.bold.white(method.padEnd(4));
-    const statusStr = getStatusColor(status)(status.toString());
-    const durationStr = chalk.cyan(`${duration}ms`);
-    const urlStr = chalk.blue(url);
-    
-    const logEntry = `${timeStr} ${methodStr} ${urlStr} ${statusStr} ${durationStr}`;
-    
-    if (status >= 500) {
-      console.error(chalk.red('🔴'), logEntry);
-    } else if (status >= 400) {
-      console.warn(chalk.yellow('🟡'), logEntry);
-    } else if (status >= 300) {
-      console.info(chalk.cyan('🔵'), logEntry);
-    } else {
-      console.log(chalk.green('🟢'), logEntry);
+    try {
+      const gray = chalk.gray || ((s) => s);
+      const boldWhite = (chalk.bold && chalk.bold.white) ? chalk.bold.white : chalk.white || ((s) => s);
+      const cyan = chalk.cyan || ((s) => s);
+      const blue = chalk.blue || ((s) => s);
+      const red = chalk.red || ((s) => s);
+      const yellow = chalk.yellow || ((s) => s);
+      const green = chalk.green || ((s) => s);
+      
+      const timeStr = gray(`[${timestamp}]`);
+      const methodStr = boldWhite(method.padEnd(4));
+      const statusStr = getStatusColor(status)(status.toString());
+      const durationStr = cyan(`${duration}ms`);
+      const urlStr = blue(url);
+      
+      const logEntry = `${timeStr} ${methodStr} ${urlStr} ${statusStr} ${durationStr}`;
+      
+      if (status >= 500) {
+        console.error(red('🔴'), logEntry);
+      } else if (status >= 400) {
+        console.warn(yellow('🟡'), logEntry);
+      } else if (status >= 300) {
+        console.info(cyan('🔵'), logEntry);
+      } else {
+        console.log(green('🟢'), logEntry);
+      }
+    } catch (e) {
+      // Fallback to simple logging
+      const logEntry = `[${timestamp}] ${method.padEnd(4)} ${url} ${status} ${duration}ms`;
+      if (status >= 400) {
+        console.error(logEntry);
+      } else {
+        console.log(logEntry);
+      }
     }
   });
   
@@ -57,40 +110,88 @@ const logger = (req, res, next) => {
 
 // Helper function to get appropriate color for status codes
 function getStatusColor(status) {
-  if (status >= 500) return chalk.red.bold;
-  if (status >= 400) return chalk.yellow.bold;
-  if (status >= 300) return chalk.cyan;
-  return chalk.green.bold;
+  try {
+    if (status >= 500) return chalk.red && chalk.red.bold ? chalk.red.bold : chalk.red || ((s) => s);
+    if (status >= 400) return chalk.yellow && chalk.yellow.bold ? chalk.yellow.bold : chalk.yellow || ((s) => s);
+    if (status >= 300) return chalk.cyan || ((s) => s);
+    return chalk.green && chalk.green.bold ? chalk.green.bold : chalk.green || ((s) => s);
+  } catch (e) {
+    return (s) => s;
+  }
 }
 
 // Enhanced error logging function
 function logError(error, context = 'UNKNOWN') {
   const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  console.error(chalk.red.bold('❌ [ERROR]'), chalk.gray(`[${timestamp}]`), chalk.magenta(`[${context}]`));
-  console.error(chalk.red('Message:'), chalk.white(error.message || 'Unknown error'));
-  if (error.stack) {
-    console.error(chalk.dim('Stack:'));
-    console.error(chalk.dim(error.stack));
+  try {
+    const redBold = (chalk.red && chalk.red.bold) ? chalk.red.bold : chalk.red || ((s) => s);
+    const gray = chalk.gray || ((s) => s);
+    const magenta = chalk.magenta || ((s) => s);
+    const red = chalk.red || ((s) => s);
+    const white = chalk.white || ((s) => s);
+    const dim = chalk.dim || ((s) => s);
+    
+    console.error(redBold('❌ [ERROR]'), gray(`[${timestamp}]`), magenta(`[${context}]`));
+    console.error(red('Message:'), white(error.message || 'Unknown error'));
+    if (error.stack) {
+      console.error(dim('Stack:'));
+      console.error(dim(error.stack));
+    }
+    console.error(red('─'.repeat(80)));
+  } catch (e) {
+    // Fallback to plain console.error
+    console.error(`❌ [ERROR] [${timestamp}] [${context}]`);
+    console.error('Message:', error.message || 'Unknown error');
+    if (error.stack) {
+      console.error('Stack:', error.stack);
+    }
+    console.error('─'.repeat(80));
   }
-  console.error(chalk.red('─'.repeat(80)));
 }
 
 // Enhanced success logging function
 function logSuccess(message, context = 'APP') {
   const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  console.log(chalk.green.bold('✅ [SUCCESS]'), chalk.gray(`[${timestamp}]`), chalk.cyan(`[${context}]`), chalk.white(message));
+  try {
+    const greenBold = (chalk.green && chalk.green.bold) ? chalk.green.bold : chalk.green || ((s) => s);
+    const gray = chalk.gray || ((s) => s);
+    const cyan = chalk.cyan || ((s) => s);
+    const white = chalk.white || ((s) => s);
+    
+    console.log(greenBold('✅ [SUCCESS]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
+  } catch (e) {
+    console.log(`✅ [SUCCESS] [${timestamp}] [${context}] ${message}`);
+  }
 }
 
 // Enhanced info logging function
 function logInfo(message, context = 'INFO') {
   const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  console.log(chalk.blue.bold('ℹ️  [INFO]'), chalk.gray(`[${timestamp}]`), chalk.cyan(`[${context}]`), chalk.white(message));
+  try {
+    const blueBold = (chalk.blue && chalk.blue.bold) ? chalk.blue.bold : chalk.blue || ((s) => s);
+    const gray = chalk.gray || ((s) => s);
+    const cyan = chalk.cyan || ((s) => s);
+    const white = chalk.white || ((s) => s);
+    
+    console.log(blueBold('ℹ️  [INFO]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
+  } catch (e) {
+    console.log(`ℹ️  [INFO] [${timestamp}] [${context}] ${message}`);
+  }
 }
 
 // Enhanced warning logging function
 function logWarning(message, context = 'WARNING') {
   const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  console.warn(chalk.yellow.bold('⚠️  [WARNING]'), chalk.gray(`[${timestamp}]`), chalk.cyan(`[${context}]`), chalk.white(message));
+  try {
+    const yellowBold = (chalk.yellow && chalk.yellow.bold) ? chalk.yellow.bold : chalk.yellow || ((s) => s);
+    const gray = chalk.gray || ((s) => s);
+    const cyan = chalk.cyan || ((s) => s);
+    const white = chalk.white || ((s) => s);
+    
+    console.warn(yellowBold('⚠️  [WARNING]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
+  } catch (e) {
+    console.warn(`⚠️  [WARNING] [${timestamp}] [${context}] ${message}`);
+  }
 }
 
 // Function to get user-friendly error message
