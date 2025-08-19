@@ -36,42 +36,43 @@
 
         .yt-thumbnail-display {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .yt-thumbnail-display img {
             max-width: 100%;
-            max-height: 320px;
+            max-height: 300px;
+            width: auto;
+            height: auto;
             border-radius: 16px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
             transition: transform 0.4s ease, box-shadow 0.4s ease;
         }
 
         .yt-thumbnail-display img:hover {
-            transform: scale(1.03);
+            transform: scale(1.02);
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
         }
 
         .yt-video-info {
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
 
         .yt-video-title {
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #ffffff;
-            margin: 1.2rem 0;
-            line-height: 1.3;
+            margin: 0 0 1.2rem 0;
+            line-height: 1.4;
             text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         .yt-video-details {
             display: flex;
             justify-content: center;
-            gap: 2rem;
+            gap: 1.5rem;
             flex-wrap: wrap;
-            margin-top: 1rem;
         }
 
         .yt-video-detail {
@@ -361,6 +362,19 @@
 
         /* Responsive design for YouTube page */
         @media (max-width: 768px) {
+            .yt-thumbnail-display img {
+                max-height: 220px;
+            }
+
+            .yt-video-title {
+                font-size: 1.3rem;
+            }
+
+            .yt-video-details {
+                gap: 1rem;
+                flex-direction: row;
+            }
+
             .yt-format-strap {
                 flex-direction: column;
                 align-items: flex-start;
@@ -372,18 +386,6 @@
                 align-self: stretch;
                 justify-content: center;
                 padding: 1rem 1.5rem;
-            }
-
-            .yt-thumbnail-display img {
-                max-height: 220px;
-            }
-
-            .yt-video-details {
-                gap: 1rem;
-            }
-
-            .yt-video-title {
-                font-size: 1.3rem;
             }
 
             .yt-format-type-quality {
@@ -443,6 +445,74 @@
         .yt-format-options-list {
             display: flex !important;
             flex-direction: column !important;
+        }
+        
+        /* YouTube Result Container Alignment Fixes */
+        #resultContainer {
+            display: none;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        #resultContainer.show {
+            display: flex !important;
+        }
+        
+        #resultContent {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0;
+        }
+        
+        /* Ensure proper spacing and alignment */
+        .yt-media-preview-container {
+            display: block !important;
+            width: 100%;
+            max-width: 100%;
+            margin: 2rem auto;
+            position: relative;
+        }
+        
+        /* Fix video header alignment */
+        .yt-video-header {
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Ensure thumbnail container is properly sized */
+        .yt-thumbnail-display {
+            min-width: 300px;
+            max-width: 400px;
+        }
+        
+        /* Fix video info alignment */
+        .yt-video-info {
+            min-width: 0;
+            flex: 1;
+        }
+        
+        /* Ensure format list takes full width */
+        .yt-format-options-list {
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        /* Fix responsive layout */
+        @media (max-width: 768px) {
+            .yt-thumbnail-display {
+                min-width: unset;
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .yt-media-preview-container {
+                margin: 1rem auto;
+            }
         }
     </style>
 </head>
