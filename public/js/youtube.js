@@ -256,6 +256,9 @@ class YouTubeHandler {
         const modal = document.createElement('div');
         modal.className = 'yt-download-modal';
 
+        // Generate proxy download URL
+        const proxyDownloadUrl = this.generateProxyDownloadUrl(downloadData.downloadUrl);
+        
         modal.innerHTML = `
             <button class="yt-modal-close">
                 <i class="fas fa-times"></i>
@@ -272,7 +275,7 @@ class YouTubeHandler {
             </div>
             
             <div class="yt-modal-footer">
-                <a href="${this.escapeAttribute(downloadData.downloadUrl)}" 
+                <a href="${this.escapeAttribute(proxyDownloadUrl)}" 
                    class="yt-download-link" 
                    download="${this.escapeAttribute(downloadData.title)}">
                     <i class="fas fa-download"></i> Download Now
@@ -416,6 +419,17 @@ class YouTubeHandler {
     escapeAttribute(text) {
         if (!text) return '';
         return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Generate proxy download URL to avoid external redirects
+    generateProxyDownloadUrl(originalUrl) {
+        if (!originalUrl) return '';
+        
+        // Encode the original URL in base64 to safely pass it as a URL parameter
+        const encodedUrl = btoa(originalUrl);
+        
+        // Return our proxy endpoint URL
+        return `/api/youtube/download/${encodedUrl}`;
     }
 
     // Autoscroll functionality for YouTube page
