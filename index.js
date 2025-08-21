@@ -245,15 +245,7 @@ app.get("/", (req, res) => {
   res.render('main');
 });
 
-// Error handling middleware (this is early middleware, not the global one)
-app.use((err, req, res, next) => {
-  logError(err, 'MIDDLEWARE');
-  
-  const userFriendlyMessage = getUserFriendlyError(err);
-  const errorMessage = encodeURIComponent(userFriendlyMessage);
-  res.redirect(`/error?message=${errorMessage}`);
-});
-
+// Error page route
 app.get("/error", (req, res) => {
   let errorMessage = req.query.message || "An unknown error occurred.";
   try {
@@ -266,7 +258,6 @@ app.get("/error", (req, res) => {
   logInfo(`Error page accessed: ${errorMessage}`, 'ERROR_PAGE');
   res.status(500).render('error', { errorMessage });
 });
-    
 
 app.get("/:platform", (req, res) => {
   const platform = req.params.platform.toLowerCase();

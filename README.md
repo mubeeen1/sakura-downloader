@@ -81,7 +81,9 @@
 
 ### Supported Platforms 🚀
 
--   ✅ YouTube (Video & Audio)
+-   ✅ Twittter(video)
+-   ✅ Facebook(video)
+-   ✅ Tiktok(video)
 -   ✅ Instagram (Posts, Reels & Stories - NEW!)
 -   ✅ Pinterest (Enhanced with better scraping)
 ## 🌱 Installation — Plant Your Sakura Tree
