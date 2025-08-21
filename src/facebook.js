@@ -13,7 +13,7 @@ async function downloadFacebook(url) {
         
         const data = response.data;
         
-        if (data.status === true && data.result>3) {
+        if (data.status === true && data.result) {
             // Return array format to match other platform responses
             return [{
                 type: 'video',
