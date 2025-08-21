@@ -13,7 +13,7 @@ async function downloadTwitter(url) {
         
         const data = response.data;
         
-        if (data.status === true && data.result) {
+        if (data.status === true && data.result.video_hd||data.result.video_sd) {
             // Return array format to match other platform responses
             return [{
                 type: 'video',
