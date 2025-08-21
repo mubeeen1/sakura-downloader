@@ -13,7 +13,7 @@ async function downloadTikTok(url) {
         
         const data = response.data;
         
-        if (data.status === true && data.result) {
+        if (data.status === true && data.result.nowm) {
             // Return array format to match other platform responses
             return [{
                 type: 'video',
