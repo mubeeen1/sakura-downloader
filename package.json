@@ -15,10 +15,10 @@
     "body-parser": "^2.2.0",
     "btch-downloader": "^4.1.21",
     "chalk": "^5.4.1",
+    "cheerio": "^1.0.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
-    "mime-types": "^3.0.1",
-    "qs": "^6.14.0"
+    "mime-types": "^3.0.1"
   }
 }

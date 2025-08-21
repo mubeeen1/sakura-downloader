@@ -1,7 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const ytdown = require('./src/ytdown'); // Import the scraping module
 let chalk;
 try {
   chalk = require('chalk');
@@ -267,163 +266,11 @@ app.get("/error", (req, res) => {
   logInfo(`Error page accessed: ${errorMessage}`, 'ERROR_PAGE');
   res.status(500).render('error', { errorMessage });
 });
-
-// New API routes for YouTube scraping
-app.post("/api/youtube/info", async (req, res) => {
-  try {
-    const { url } = req.body;
     
-    if (!url) {
-      logWarning('YouTube API called without URL', 'YOUTUBE_API');
-      return res.status(400).json({ success: false, error: 'URL is required' });
-    }
-
-    logInfo(`Fetching video info for: ${url}`, 'YOUTUBE_API');
-    const result = await ytdown.getVideoInfo(url);
-    
-    if (result.success) {
-      logSuccess(`Video info fetched successfully: ${result.data?.title || 'Unknown title'}`, 'YOUTUBE_API');
-    }
-    
-    res.json(result);
-  } catch (error) {
-    logError(error, 'YOUTUBE_API');
-    const userFriendlyMessage = getUserFriendlyError(error);
-    res.status(500).json({ success: false, error: userFriendlyMessage });
-  }
-});
-
-app.post("/api/youtube/convert", async (req, res) => {
-  try {
-    const { vid, k } = req.body;
-    
-    if (!vid || !k) {
-      logWarning('YouTube convert API called without required parameters', 'YOUTUBE_API');
-      return res.status(400).json({ success: false, error: 'Video ID and key are required' });
-    }
-
-    logInfo(`Converting video: ${vid} with key: ${k}`, 'YOUTUBE_API');
-    const result = await ytdown.convertVideo(vid, k);
-    
-    if (result.success) {
-      logSuccess(`Video converted successfully: ${result.data?.title || 'Unknown title'}`, 'YOUTUBE_API');
-    }
-    
-    res.json(result);
-  } catch (error) {
-    logError(error, 'YOUTUBE_API');
-    const userFriendlyMessage = getUserFriendlyError(error);
-    res.status(500).json({ success: false, error: userFriendlyMessage });
-  }
-});
-
-// YouTube download proxy endpoint to avoid external redirects
-app.get("/api/youtube/download/:downloadId", async (req, res) => {
-  try {
-    const { downloadId } = req.params;
-    
-    // Decode the download URL from base64
-    let downloadUrl;
-    try {
-      downloadUrl = Buffer.from(downloadId, 'base64').toString('utf-8');
-    } catch (error) {
-      logWarning('Invalid download ID provided', 'YOUTUBE_PROXY');
-      return res.status(400).json({ success: false, error: 'Invalid download link' });
-    }
-    
-    logInfo(`Proxying YouTube download from: ${downloadUrl}`, 'YOUTUBE_PROXY');
-    
-    // Make request to the actual download URL with proper headers
-    const response = await axios({
-      method: 'GET',
-      url: downloadUrl,
-      responseType: 'stream',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://ssvid.net/',
-        'Origin': 'https://ssvid.net'
-      },
-      timeout: 30000, // 30 second timeout
-      maxRedirects: 5
-    });
-    
-    // Get content type and filename from headers
-    const contentType = response.headers['content-type'] || 'application/octet-stream';
-    const contentLength = response.headers['content-length'];
-    const contentDisposition = response.headers['content-disposition'];
-    
-    // Extract filename from content-disposition or create a default one
-    let filename = 'download';
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?([^"]+)"?/i);
-      if (match) {
-        filename = match[1];
-      }
-    } else {
-      // Generate filename based on content type
-      if (contentType.includes('video/mp4')) {
-        filename = `video_${Date.now()}.mp4`;
-      } else if (contentType.includes('audio/mpeg')) {
-        filename = `audio_${Date.now()}.mp3`;
-      } else {
-        filename = `download_${Date.now()}`;
-      }
-    }
-    
-    // Sanitize filename to prevent path traversal and invalid characters
-    filename = filename.replace(/[<>:"/\\|?*]/g, '_').replace(/\.\.+/g, '.').substring(0, 255);
-    
-    // Set appropriate headers for download
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
-    if (contentLength) {
-      res.setHeader('Content-Length', contentLength);
-    }
-    
-    // Enable CORS for cross-origin requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    
-    logSuccess(`Starting download proxy for file: ${filename}`, 'YOUTUBE_PROXY');
-    
-    // Pipe the response stream directly to the client
-    response.data.pipe(res);
-    
-    // Handle stream errors
-    response.data.on('error', (error) => {
-      logError(error, 'YOUTUBE_PROXY_STREAM');
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, error: 'Download stream error' });
-      }
-    });
-    
-    // Log when download completes
-    response.data.on('end', () => {
-      logSuccess(`Download completed for: ${filename}`, 'YOUTUBE_PROXY');
-    });
-    
-  } catch (error) {
-    logError(error, 'YOUTUBE_PROXY');
-    
-    if (!res.headersSent) {
-      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-        res.status(404).json({ success: false, error: 'Download link expired or invalid' });
-      } else if (error.code === 'ETIMEDOUT') {
-        res.status(408).json({ success: false, error: 'Download timeout - please try again' });
-      } else {
-        res.status(500).json({ success: false, error: 'Download failed - please try again' });
-      }
-    }
-  }
-});
 
 app.get("/:platform", (req, res) => {
   const platform = req.params.platform.toLowerCase();
-  if (!['youtube', 'instagram', 'pinterest'].includes(platform)) {
+  if (!['youtube', 'instagram', 'pinterest', 'tiktok', "facebook", "twitter"].includes(platform)) {
     logWarning(`Unsupported platform requested: ${platform}`, 'ROUTING');
     return res.redirect(`/error?message=${encodeURIComponent("Platform not supported")}`);
   }
@@ -468,8 +315,8 @@ app.post("/pinterest/download", async (req, res) => {
     logInfo(`Pinterest download requested for: ${url} (type: ${mediaType})`, 'PINTEREST_API');
     
     // Only use pintScrape for video type, use pinterest module for photos
-    if (mediaType === 'video' && fs.existsSync('./src/pintscrape.js')) {
-      const pintscrape = require('./src/pintscrape');
+    if (mediaType === 'video' && fs.existsSync('./src/pintScrape.js')) {
+      const pintscrape = require('./src/pintScrape');
       const mediaItems = await pintscrape.downloadPinterestVideo(url);
       logSuccess(`Pinterest video downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
       res.json({ success: true, mediaItems });
@@ -488,51 +335,78 @@ app.post("/pinterest/download", async (req, res) => {
   }
 });
 
-// YouTube download route
-app.post("/youtube/download", async (req, res) => {
+// TikTok download route
+app.post("/tiktok/download", async (req, res) => {
   try {
     const { url } = req.body;
     
     if (!url) {
-      logWarning('YouTube download called without URL', 'YOUTUBE_DOWNLOAD');
+      logWarning('TikTok download called without URL', 'TIKTOK_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`YouTube download requested for: ${url}`, 'YOUTUBE_DOWNLOAD');
+    logInfo(`TikTok download requested for: ${url}`, 'TIKTOK_API');
     
-    // Get video info using scraping module
-    const videoInfo = await ytdown.getVideoInfo(url);
+    const tiktok = require('./src/tiktok');
+    const mediaItems = await tiktok.downloadTikTok(url);
     
-    if (!videoInfo || !videoInfo.success || !videoInfo.data || !videoInfo.data.formats || videoInfo.data.formats.length === 0) {
-      logWarning('No downloadable formats found for YouTube URL', 'YOUTUBE_DOWNLOAD');
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No downloadable formats found or invalid URL' 
-      });
-    }
-
-    // Create media items for display
-    const mediaItems = videoInfo.data.formats.map(format => ({
-      mediaUrl: format.url || format.downloadUrl,
-      title: videoInfo.data.title || 'YouTube Video',
-      thumbnail: videoInfo.data.thumbnail || '',
-      downloadUrl: format.url || format.downloadUrl,
-      type: format.type || 'video',
-      quality: format.quality,
-      format: format.format || format.type,
-      size: format.size,
-      key: format.key,
-      vid: videoInfo.data.vid
-    }));
-
-    logSuccess(`YouTube formats processed: ${mediaItems.length} items`, 'YOUTUBE_DOWNLOAD');
+    logSuccess(`TikTok media downloaded: ${mediaItems?.length || 0} items`, 'TIKTOK_API');
     res.json({ success: true, mediaItems });
   } catch (error) {
-    logError(error, 'YOUTUBE_DOWNLOAD');
+    logError(error, 'TIKTOK_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
 });
+
+// Facebook download route
+app.post("/facebook/download", async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      logWarning('Facebook download called without URL', 'FACEBOOK_API');
+      return res.status(400).json({ success: false, error: 'URL is required' });
+    }
+
+    logInfo(`Facebook download requested for: ${url}`, 'FACEBOOK_API');
+    
+    const facebook = require('./src/facebook');
+    const mediaItems = await facebook.downloadFacebook(url);
+    
+    logSuccess(`Facebook media downloaded: ${mediaItems?.length || 0} items`, 'FACEBOOK_API');
+    res.json({ success: true, mediaItems });
+  } catch (error) {
+    logError(error, 'FACEBOOK_API');
+    const userFriendlyMessage = getUserFriendlyError(error);
+    res.status(500).json({ success: false, error: userFriendlyMessage });
+  }
+});
+
+// Twitter download route
+app.post("/twitter/download", async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      logWarning('Twitter download called without URL', 'TWITTER_API');
+      return res.status(400).json({ success: false, error: 'URL is required' });
+    }
+
+    logInfo(`Twitter download requested for: ${url}`, 'TWITTER_API');
+    
+    const twitter = require('./src/twitter');
+    const mediaItems = await twitter.downloadTwitter(url);
+    
+    logSuccess(`Twitter media downloaded: ${mediaItems?.length || 0} items`, 'TWITTER_API');
+    res.json({ success: true, mediaItems });
+  } catch (error) {
+    logError(error, 'TWITTER_API');
+    const userFriendlyMessage = getUserFriendlyError(error);
+    res.status(500).json({ success: false, error: userFriendlyMessage });
+  }
+});
+
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
@@ -562,6 +436,6 @@ app.use((req, res) => {
 
 app.listen(port, () => {
   logSuccess(`🌸 Sakura Downloader server running at http://localhost:${port}`, 'SERVER');
-  logInfo('📱 Available platforms: /youtube, /instagram, /pinterest', 'SERVER');
+  logInfo('📱 Available platforms: /youtube, /instagram, /pinterest, /tiktok, /facebook, /twitter', 'SERVER');
   logInfo('✨ Enhanced logging and error handling enabled', 'SERVER');
 });
