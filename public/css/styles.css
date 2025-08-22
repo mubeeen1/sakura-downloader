@@ -959,6 +959,7 @@ body {
 .platform-instagram:hover { box-shadow: 0 20px 40px rgba(225, 48, 108, 0.3); }
 .platform-twitter:hover { box-shadow: 0 20px 40px rgba(29, 161, 242, 0.3); }
 .platform-pinterest:hover { box-shadow: 0 20px 40px rgba(189, 8, 28, 0.3); }
+.platform-youtube:hover { box-shadow: 0 20px 40px rgba(30, 159, 240, 0.3); }
 
 .footer-info {
     margin-top: 3rem;
