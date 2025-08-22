@@ -30,7 +30,7 @@
 ### 🌺 Major Blooms of Improvement
 
 - **🌙 Complete UI Renaissance**: Transformed from a simple garden into a breathtaking cherry blossom sanctuary with modern aesthetics
-- **📱 Instagram Integration**: Welcome Instagram to our digital garden! Now supporting posts, reels, and stories
+- **📱 Multi-Platform Integration**: Enhanced support for all major social media platforms
 - **🔄 Enhanced Pinterest Experience**: Improved scraping with graceful error handling and better reliability
 - **📱 Mobile-First Design**: Fully responsive across all devices, from desktop gardens to mobile blossoms
 
@@ -44,7 +44,7 @@
 
 ### 🌸 New Features That Make the Garden Bloom
 
-- **📱 Instagram Downloader**: Complete Instagram support for posts, reels, and stories
+- **📱 Complete Platform Support**: Instagram, Pinterest, TikTok, Facebook, and Twitter integration
 - **🎨 Modern UI/UX**: Beautiful loading states and smooth animations
 - **🔄 Batch Downloads**: Process multiple URLs simultaneously
 - **📱 Responsive Design**: Perfect experience on all screen sizes
@@ -53,15 +53,20 @@
 
 ### 🌱 New Seeds Planted (Added Files)
 - **`src/instagram.js`** - The Instagram cherry blossom tree, complete with posts, reels, and story support
+- **`src/facebook.js`** - Facebook video downloader for posts, reels, and stories
+- **`src/twitter.js`** - Twitter video downloader for tweets and media content
 - **`views/instagram.ejs`** - A beautiful new temple dedicated to Instagram downloads
+- **`views/facebook.ejs`** - Elegant interface for Facebook downloads
+- **`views/twitter.ejs`** - Sleek design for Twitter media downloading
 - **`public/js/common.js`** - Shared utilities and theme management, like garden tools for all platforms
 - **`public/css/styles.css`** - Complete garden renovation with modern aesthetics
 
 ### 🌿 Enhanced Garden Paths (Modified Files)
-- **`index.js`** - Added Instagram routes and improved error handling like better garden pathways
-- **`views/main.ejs`** - Updated layout with new navigation and theme toggle
+- **`index.js`** - Added all platform routes and improved error handling like better garden pathways
+- **`views/main.ejs`** - Updated layout with new navigation and platform cards
 - **`src/pintScrape.js`** - Enhanced Pinterest scraping with graceful error handling
 - **`Dockerfile`** - Optimized for smaller image size and better performance
+- **`test-server.js`** - Updated testing for all supported platforms
 
 ### 🌺 Technical Garden Improvements
 - **🏗️ Modular Architecture**: Restructured codebase like a well-organized Japanese garden
@@ -81,11 +86,12 @@
 
 ### Supported Platforms 🚀
 
--   ✅ Twittter(video)
--   ✅ Facebook(video)
--   ✅ Tiktok(video)
--   ✅ Instagram (Posts, Reels & Stories - NEW!)
--   ✅ Pinterest (Enhanced with better scraping)
+-   ✅ **Instagram** - Posts, Reels & Stories
+-   ✅ **Pinterest** - Images and Videos with enhanced scraping
+-   ✅ **TikTok** - Videos without watermark in best quality
+-   ✅ **Facebook** - Videos from posts, reels, and stories
+-   ✅ **Twitter** - Videos from tweets with high quality
+
 ## 🌱 Installation — Plant Your Sakura Tree
 
 ### Prerequisites 🌸
@@ -125,31 +131,33 @@ sakura-downloader/
 │   │   └── styles.css            # 🌸 Complete UI overhaul with modern design
 │   ├── js/
 │   │   ├── common.js            # 🌿 Shared utilities and theme management
-│   │   ├── pinterest.js         # 🎋 Pinterest frontend logic
-│   │   └── youtube.js           # 🌸 YouTube frontend logic
-│   └── images/
-│       └── black_placeholder.png  # 🖼️ Gentle placeholder for thumbnails
+│   │   └── pinterest.js         # 🎋 Pinterest frontend logic
 ├── src/                           # 🌿 The heart of our blooming garden
-│   ├── instagram.js              # 🌸 NEW: Instagram downloader
-│   ├── pinterest.js              # 🎋 Pinterest downloader
-│   ├── pintScrape.js             # 🌸 Enhanced Pinterest scraper
-│   └── ytdown.js                 # 🌸 YouTube downloader
-├── tmp/                           # 🍃 Ephemeral storage for media files
+│   ├── facebook.js               # 📘 Facebook video downloader
+│   ├── instagram.js              # 📸 Instagram downloader (posts, reels, stories)
+│   ├── pinterest.js              # 📌 Pinterest photo downloader
+│   ├── pintScrape.js             # 🎬 Pinterest video scraper
+│   ├── tiktok.js                 # 🎵 TikTok video downloader
+│   └── twitter.js                # 🐦 Twitter video downloader
 ├── views/                         # 🏮 Temple views and layouts
 │   ├── main.ejs                   # 🌸 Updated homepage garden
-│   ├── instagram.ejs              # 🌸 NEW: Instagram download shrine
-│   ├── platform.ejs               # 🎋 Platform-specific download shrine
+│   ├── facebook.ejs               # 📘 Facebook download shrine
+│   ├── instagram.ejs              # 📸 Instagram download shrine
+│   ├── pinterest.ejs              # 📌 Pinterest download shrine
+│   ├── tiktok.ejs                 # 🎵 TikTok download shrine
+│   ├── twitter.ejs                # 🐦 Twitter download shrine
 │   └── error.ejs                  # 🚩 Graceful error handling page
 ├── index.js                       # 🌿 The heart of our blooming server
 ├── package.json                   # 📜 Project essence and dependencies
 ├── Dockerfile                     # 🐳 Optimized container configuration
+├── test-server.js                 # 🧪 Testing utilities
 └── README.md                      # 📚 This beautiful guide you're reading
 ```
 
 ## 🌸 Usage — Walk Through the Cherry Blossom Path
 
 1.  🏮 From the main garden (homepage), choose your favorite platform shrine
-2.  🎋 Enter the dedicated temple for your platform (e.g., `/youtube`, `/instagram`)
+2.  🎋 Enter the dedicated temple for your platform (e.g., `/instagram`, `/facebook`, `/twitter`)
 3.  📝 Gracefully paste your media URL into the sacred input field
 4.  🌸 Press the **Download** button and watch the magic unfold
 5.  ✨ Witness as the app extracts your media with the precision of a master gardener, complete with beautiful thumbnail preview
@@ -160,11 +168,10 @@ sakura-downloader/
 
 | Method | Route                      | Description                                                              |
 | :----- | :------------------------- | :----------------------------------------------------------------------- |
-| `GET`  | `/`                        | Renders the main homepage with theme toggle                              |
+| `GET`  | `/`                        | Renders the main homepage with platform selection                        |
 | `GET`  | `/:platform`               | Renders the download page for the specified platform                     |
-| `POST` | `/:platform/download`      | Processes a URL, downloads the media, and returns file paths             |
-| `GET`  | `/download/:filename`      | Serves a downloaded file to the user and then deletes it                 |
-| `POST` | `/clear-tmp`               | Manually clears all files from the temporary directory                   |
+| `POST` | `/:platform/download`      | Processes a URL, downloads the media, and returns file paths             |              |
+| `GET`  | `/health`                  | Health check endpoint for monitoring                                     |
 | `GET`  | `/error`                   | Displays a generic error page with a custom message                     |
 
 ## 🤝 Contributing to the Garden

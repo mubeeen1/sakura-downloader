@@ -1,201 +1,134 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-let chalk;
-try {
-  chalk = require('chalk');
-  if (chalk && chalk.default) chalk = chalk.default;
-  // Test if chalk is working properly
-  if (!chalk.red || typeof chalk.red !== 'function') {
-    throw new Error('Chalk not functioning properly');
-  }
-} catch (e) {
-  // Fallback if chalk is not available or not working
-  const createChalkFallback = () => {
-    const identity = (s) => s;
-    const chalkObj = {
-      red: identity,
-      green: identity,
-      yellow: identity,
-      blue: identity,
-      cyan: identity,
-      magenta: identity,
-      gray: identity,
-      white: identity,
-      bold: identity,
-      dim: identity
-    };
-    
-    // Add chaining support
-    Object.keys(chalkObj).forEach(color => {
-      chalkObj[color].bold = identity;
-      chalkObj[color].dim = identity;
-    });
-    
-    // Add bold with color support
-    chalkObj.bold.red = identity;
-    chalkObj.bold.green = identity;
-    chalkObj.bold.yellow = identity;
-    chalkObj.bold.blue = identity;
-    chalkObj.bold.cyan = identity;
-    chalkObj.bold.magenta = identity;
-    chalkObj.bold.gray = identity;
-    chalkObj.bold.white = identity;
-    
-    return chalkObj;
-  };
-  
-  chalk = createChalkFallback();
-  console.log('⚠️  Using chalk fallback - colors will not be displayed');
-}
-const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Enhanced compact logging middleware with multiple colors
-const logger = (req, res, next) => {
+// Simplified logging utility
+class Logger {
+  constructor() {
+    this.colors = this.detectColors();
+  }
+
+  detectColors() {
+    try {
+      const chalk = require('chalk');
+      
+      // For chalk v5+, the functions are properties of the default export
+      // Try to access them directly or via default export
+      const chalkInstance = chalk.default || chalk;
+      
+      if (chalkInstance && typeof chalkInstance.red === 'function') {
+        return {
+          red: chalkInstance.red,
+          green: chalkInstance.green,
+          yellow: chalkInstance.yellow,
+          blue: chalkInstance.blue,
+          cyan: chalkInstance.cyan,
+          magenta: chalkInstance.magenta,
+          gray: chalkInstance.gray,
+          white: chalkInstance.white,
+          bold: chalkInstance.bold
+        };
+      }
+      
+      // If we can't find the functions, try to access them as properties
+      if (chalkInstance.red) {
+        return {
+          red: chalkInstance.red,
+          green: chalkInstance.green,
+          yellow: chalkInstance.yellow,
+          blue: chalkInstance.blue,
+          cyan: chalkInstance.cyan,
+          magenta: chalkInstance.magenta,
+          gray: chalkInstance.gray,
+          white: chalkInstance.white,
+          bold: chalkInstance.bold
+        };
+      }
+      
+      throw new Error('Chalk functions not available');
+    } catch (error) {
+      // Fallback to no colors with proper function checking
+      console.warn('Chalk not available or incompatible, using fallback colors:', error.message);
+      const identity = (s) => s;
+      return {
+        red: identity,
+        green: identity,
+        yellow: identity,
+        blue: identity,
+        cyan: identity,
+        magenta: identity,
+        gray: identity,
+        white: identity,
+        bold: identity
+      };
+    }
+  }
+
+  getTimestamp() {
+    return new Date().toISOString().replace('T', ' ').substr(0, 19);
+  }
+
+  log(level, message, context = 'APP') {
+    const timestamp = this.getTimestamp();
+    const levels = {
+      info: { symbol: 'ℹ️', color: this.colors.blue },
+      success: { symbol: '✅', color: this.colors.green },
+      warning: { symbol: '⚠️', color: this.colors.yellow },
+      error: { symbol: '❌', color: this.colors.red }
+    };
+
+    const levelConfig = levels[level] || levels.info;
+    const formattedMessage = `${levelConfig.symbol} [${level.toUpperCase()}] [${timestamp}] [${context}] ${message}`;
+    
+    // Safety check: ensure color function is callable
+    const colorFn = typeof levelConfig.color === 'function' ? levelConfig.color : (s) => s;
+    
+    if (level === 'error') {
+      console.error(colorFn(formattedMessage));
+    } else if (level === 'warning') {
+      console.warn(colorFn(formattedMessage));
+    } else {
+      console.log(colorFn(formattedMessage));
+    }
+  }
+
+  info(message, context) { this.log('info', message, context); }
+  success(message, context) { this.log('success', message, context); }
+  warning(message, context) { this.log('warning', message, context); }
+  error(error, context) { 
+    const message = error.message || 'Unknown error';
+    this.log('error', message, context);
+    if (error.stack) {
+      console.error(this.colors.gray(error.stack));
+    }
+  }
+}
+
+const logger = new Logger();
+
+// Request logging middleware
+const requestLogger = (req, res, next) => {
   const start = Date.now();
-  const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
   
   res.on('finish', () => {
     const duration = Date.now() - start;
-    const method = req.method;
-    const url = req.url;
     const status = res.statusCode;
+    const level = status >= 500 ? 'error' : status >= 400 ? 'warning' : 'info';
     
-    // Enhanced log formatting with colors
-    try {
-      const gray = chalk.gray || ((s) => s);
-      const boldWhite = (chalk.bold && chalk.bold.white) ? chalk.bold.white : chalk.white || ((s) => s);
-      const cyan = chalk.cyan || ((s) => s);
-      const blue = chalk.blue || ((s) => s);
-      const red = chalk.red || ((s) => s);
-      const yellow = chalk.yellow || ((s) => s);
-      const green = chalk.green || ((s) => s);
-      
-      const timeStr = gray(`[${timestamp}]`);
-      const methodStr = boldWhite(method.padEnd(4));
-      const statusStr = getStatusColor(status)(status.toString());
-      const durationStr = cyan(`${duration}ms`);
-      const urlStr = blue(url);
-      
-      const logEntry = `${timeStr} ${methodStr} ${urlStr} ${statusStr} ${durationStr}`;
-      
-      if (status >= 500) {
-        console.error(red('🔴'), logEntry);
-      } else if (status >= 400) {
-        console.warn(yellow('🟡'), logEntry);
-      } else if (status >= 300) {
-        console.info(cyan('🔵'), logEntry);
-      } else {
-        console.log(green('🟢'), logEntry);
-      }
-    } catch (e) {
-      // Fallback to simple logging
-      const logEntry = `[${timestamp}] ${method.padEnd(4)} ${url} ${status} ${duration}ms`;
-      if (status >= 400) {
-        console.error(logEntry);
-      } else {
-        console.log(logEntry);
-      }
-    }
+    logger.log(level, `${req.method.padEnd(4)} ${req.url} ${status} ${duration}ms`, 'REQUEST');
   });
   
   next();
 };
 
-// Helper function to get appropriate color for status codes
-function getStatusColor(status) {
-  try {
-    if (status >= 500) return chalk.red && chalk.red.bold ? chalk.red.bold : chalk.red || ((s) => s);
-    if (status >= 400) return chalk.yellow && chalk.yellow.bold ? chalk.yellow.bold : chalk.yellow || ((s) => s);
-    if (status >= 300) return chalk.cyan || ((s) => s);
-    return chalk.green && chalk.green.bold ? chalk.green.bold : chalk.green || ((s) => s);
-  } catch (e) {
-    return (s) => s;
-  }
-}
-
-// Enhanced error logging function
-function logError(error, context = 'UNKNOWN') {
-  const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  try {
-    const redBold = (chalk.red && chalk.red.bold) ? chalk.red.bold : chalk.red || ((s) => s);
-    const gray = chalk.gray || ((s) => s);
-    const magenta = chalk.magenta || ((s) => s);
-    const red = chalk.red || ((s) => s);
-    const white = chalk.white || ((s) => s);
-    const dim = chalk.dim || ((s) => s);
-    
-    console.error(redBold('❌ [ERROR]'), gray(`[${timestamp}]`), magenta(`[${context}]`));
-    console.error(red('Message:'), white(error.message || 'Unknown error'));
-    if (error.stack) {
-      console.error(dim('Stack:'));
-      console.error(dim(error.stack));
-    }
-    console.error(red('─'.repeat(80)));
-  } catch (e) {
-    // Fallback to plain console.error
-    console.error(`❌ [ERROR] [${timestamp}] [${context}]`);
-    console.error('Message:', error.message || 'Unknown error');
-    if (error.stack) {
-      console.error('Stack:', error.stack);
-    }
-    console.error('─'.repeat(80));
-  }
-}
-
-// Enhanced success logging function
-function logSuccess(message, context = 'APP') {
-  const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  try {
-    const greenBold = (chalk.green && chalk.green.bold) ? chalk.green.bold : chalk.green || ((s) => s);
-    const gray = chalk.gray || ((s) => s);
-    const cyan = chalk.cyan || ((s) => s);
-    const white = chalk.white || ((s) => s);
-    
-    console.log(greenBold('✅ [SUCCESS]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
-  } catch (e) {
-    console.log(`✅ [SUCCESS] [${timestamp}] [${context}] ${message}`);
-  }
-}
-
-// Enhanced info logging function
-function logInfo(message, context = 'INFO') {
-  const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  try {
-    const blueBold = (chalk.blue && chalk.blue.bold) ? chalk.blue.bold : chalk.blue || ((s) => s);
-    const gray = chalk.gray || ((s) => s);
-    const cyan = chalk.cyan || ((s) => s);
-    const white = chalk.white || ((s) => s);
-    
-    console.log(blueBold('ℹ️  [INFO]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
-  } catch (e) {
-    console.log(`ℹ️  [INFO] [${timestamp}] [${context}] ${message}`);
-  }
-}
-
-// Enhanced warning logging function
-function logWarning(message, context = 'WARNING') {
-  const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
-  try {
-    const yellowBold = (chalk.yellow && chalk.yellow.bold) ? chalk.yellow.bold : chalk.yellow || ((s) => s);
-    const gray = chalk.gray || ((s) => s);
-    const cyan = chalk.cyan || ((s) => s);
-    const white = chalk.white || ((s) => s);
-    
-    console.warn(yellowBold('⚠️  [WARNING]'), gray(`[${timestamp}]`), cyan(`[${context}]`), white(message));
-  } catch (e) {
-    console.warn(`⚠️  [WARNING] [${timestamp}] [${context}] ${message}`);
-  }
-}
-
-// Function to get user-friendly error message
-function getUserFriendlyError(error) {
-  const friendlyMessages = {
+// User-friendly error messages
+const getUserFriendlyError = (error) => {
+  const errorMap = {
     'ENOTFOUND': 'Network connection failed. Please check your internet connection.',
     'ECONNREFUSED': 'Service is temporarily unavailable. Please try again later.',
     'ETIMEDOUT': 'Request timed out. Please try again.',
@@ -207,22 +140,15 @@ function getUserFriendlyError(error) {
     'Access Denied': 'Access to this content is restricted.',
     'Service Unavailable': 'Service is temporarily unavailable. Please try again later.'
   };
-  
+
   const errorMessage = error.message || error.toString();
-  
-  // Check for specific error patterns
-  for (const [pattern, friendlyMsg] of Object.entries(friendlyMessages)) {
-    if (errorMessage.includes(pattern)) {
-      return friendlyMsg;
-    }
-  }
-  
-  // Default user-friendly message
-  return 'An unexpected error occurred. Please try again or contact support if the problem persists.';
-}
+  return Object.entries(errorMap).find(([pattern]) => 
+    errorMessage.includes(pattern)
+  )?.[1] || 'An unexpected error occurred. Please try again or contact support if the problem persists.';
+};
 
 // Middleware
-app.use(logger);
+app.use(requestLogger);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
@@ -251,22 +177,22 @@ app.get("/error", (req, res) => {
   try {
     errorMessage = decodeURIComponent(errorMessage);
   } catch (e) {
-    logWarning('Failed to decode error message', 'ERROR_PAGE');
+    logger.warning('Failed to decode error message', 'ERROR_PAGE');
     errorMessage = "An unknown error occurred.";
   }
   
-  logInfo(`Error page accessed: ${errorMessage}`, 'ERROR_PAGE');
+  logger.info(`Error page accessed: ${errorMessage}`, 'ERROR_PAGE');
   res.status(500).render('error', { errorMessage });
 });
 
 app.get("/:platform", (req, res) => {
   const platform = req.params.platform.toLowerCase();
-  if (!['youtube', 'instagram', 'pinterest', 'tiktok', "facebook", "twitter"].includes(platform)) {
-    logWarning(`Unsupported platform requested: ${platform}`, 'ROUTING');
+  if (!['instagram', 'pinterest', 'tiktok', "facebook", "twitter"].includes(platform)) {
+    logger.warning(`Unsupported platform requested: ${platform}`, 'ROUTING');
     return res.redirect(`/error?message=${encodeURIComponent("Platform not supported")}`);
   }
   
-  logInfo(`Platform page accessed: ${platform}`, 'ROUTING');
+  logger.info(`Platform page accessed: ${platform}`, 'ROUTING');
   res.render(`${platform}`, { platform });
 });
 
@@ -276,18 +202,18 @@ app.post("/instagram/download", async (req, res) => {
     const { url } = req.body;
     
     if (!url) {
-      logWarning('Instagram download called without URL', 'INSTAGRAM_API');
+      logger.warning('Instagram download called without URL', 'INSTAGRAM_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`Instagram download requested for: ${url}`, 'INSTAGRAM_API');
+    logger.info(`Instagram download requested for: ${url}`, 'INSTAGRAM_API');
     const instagram = require('./src/instagram');
     const mediaItems = await instagram.downloadInstagram(url);
     
-    logSuccess(`Instagram media downloaded: ${mediaItems?.length || 0} items`, 'INSTAGRAM_API');
+    logger.success(`Instagram media downloaded: ${mediaItems?.length || 0} items`, 'INSTAGRAM_API');
     res.json({ success: true, mediaItems });
   } catch (error) {
-    logError(error, 'INSTAGRAM_API');
+    logger.error(error, 'INSTAGRAM_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
@@ -299,28 +225,28 @@ app.post("/pinterest/download", async (req, res) => {
     const { url, mediaType } = req.body;
     
     if (!url) {
-      logWarning('Pinterest download called without URL', 'PINTEREST_API');
+      logger.warning('Pinterest download called without URL', 'PINTEREST_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`Pinterest download requested for: ${url} (type: ${mediaType})`, 'PINTEREST_API');
+    logger.info(`Pinterest download requested for: ${url} (type: ${mediaType})`, 'PINTEREST_API');
     
     // Only use pintScrape for video type, use pinterest module for photos
     if (mediaType === 'video' && fs.existsSync('./src/pintScrape.js')) {
       const pintscrape = require('./src/pintScrape');
       const mediaItems = await pintscrape.downloadPinterestVideo(url);
-      logSuccess(`Pinterest video downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
+      logger.success(`Pinterest video downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
       res.json({ success: true, mediaItems });
     } else if (mediaType === 'photo') {
       const pinterest = require('./src/pinterest');
       const mediaItems = await pinterest.downloadPinterest(url);
-      logSuccess(`Pinterest photo downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
+      logger.success(`Pinterest photo downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
       res.json({ success: true, mediaItems });
     } else {
       throw new Error('Invalid media type or missing scraping module');
     }
   } catch (error) {
-    logError(error, 'PINTEREST_API');
+    logger.error(error, 'PINTEREST_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
@@ -332,19 +258,19 @@ app.post("/tiktok/download", async (req, res) => {
     const { url } = req.body;
     
     if (!url) {
-      logWarning('TikTok download called without URL', 'TIKTOK_API');
+      logger.warning('TikTok download called without URL', 'TIKTOK_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`TikTok download requested for: ${url}`, 'TIKTOK_API');
+    logger.info(`TikTok download requested for: ${url}`, 'TIKTOK_API');
     
     const tiktok = require('./src/tiktok');
     const mediaItems = await tiktok.downloadTikTok(url);
     
-    logSuccess(`TikTok media downloaded: ${mediaItems?.length || 0} items`, 'TIKTOK_API');
+    logger.success(`TikTok media downloaded: ${mediaItems?.length || 0} items`, 'TIKTOK_API');
     res.json({ success: true, mediaItems });
   } catch (error) {
-    logError(error, 'TIKTOK_API');
+    logger.error(error, 'TIKTOK_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
@@ -356,19 +282,19 @@ app.post("/facebook/download", async (req, res) => {
     const { url } = req.body;
     
     if (!url) {
-      logWarning('Facebook download called without URL', 'FACEBOOK_API');
+      logger.warning('Facebook download called without URL', 'FACEBOOK_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`Facebook download requested for: ${url}`, 'FACEBOOK_API');
+    logger.info(`Facebook download requested for: ${url}`, 'FACEBOOK_API');
     
     const facebook = require('./src/facebook');
     const mediaItems = await facebook.downloadFacebook(url);
     
-    logSuccess(`Facebook media downloaded: ${mediaItems?.length || 0} items`, 'FACEBOOK_API');
+    logger.success(`Facebook media downloaded: ${mediaItems?.length || 0} items`, 'FACEBOOK_API');
     res.json({ success: true, mediaItems });
   } catch (error) {
-    logError(error, 'FACEBOOK_API');
+    logger.error(error, 'FACEBOOK_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
@@ -380,19 +306,19 @@ app.post("/twitter/download", async (req, res) => {
     const { url } = req.body;
     
     if (!url) {
-      logWarning('Twitter download called without URL', 'TWITTER_API');
+      logger.warning('Twitter download called without URL', 'TWITTER_API');
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
 
-    logInfo(`Twitter download requested for: ${url}`, 'TWITTER_API');
+    logger.info(`Twitter download requested for: ${url}`, 'TWITTER_API');
     
     const twitter = require('./src/twitter');
     const mediaItems = await twitter.downloadTwitter(url);
     
-    logSuccess(`Twitter media downloaded: ${mediaItems?.length || 0} items`, 'TWITTER_API');
+    logger.success(`Twitter media downloaded: ${mediaItems?.length || 0} items`, 'TWITTER_API');
     res.json({ success: true, mediaItems });
   } catch (error) {
-    logError(error, 'TWITTER_API');
+    logger.error(error, 'TWITTER_API');
     const userFriendlyMessage = getUserFriendlyError(error);
     res.status(500).json({ success: false, error: userFriendlyMessage });
   }
@@ -401,7 +327,7 @@ app.post("/twitter/download", async (req, res) => {
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
-  logError(err, 'GLOBAL');
+  logger.error(err, 'GLOBAL');
   
   const userFriendlyMessage = getUserFriendlyError(err);
   const errorMessage = encodeURIComponent(userFriendlyMessage);
@@ -420,13 +346,13 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-  logWarning(`404 - Page not found: ${req.path}`, '404_HANDLER');
+  logger.warning(`404 - Page not found: ${req.path}`, '404_HANDLER');
   const errorMessage = encodeURIComponent(`Page not found: ${req.path}`);
   res.status(404).redirect(`/error?message=${errorMessage}`);
 });
 
 app.listen(port, () => {
-  logSuccess(`🌸 Sakura Downloader server running at http://localhost:${port}`, 'SERVER');
-  logInfo('📱 Available platforms: /youtube, /instagram, /pinterest, /tiktok, /facebook, /twitter', 'SERVER');
-  logInfo('✨ Enhanced logging and error handling enabled', 'SERVER');
+  logger.success(`🌸 Sakura Downloader server running at http://localhost:${port}`, 'SERVER');
+  logger.info('📱 Available platforms: /instagram, /pinterest, /tiktok, /facebook, /twitter', 'SERVER');
+  logger.info('✨ Enhanced logging and error handling enabled', 'SERVER');
 });

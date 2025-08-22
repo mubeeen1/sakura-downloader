@@ -1,7 +1,7 @@
-// Common JavaScript functionality for all platform pages with autoscroll
+// Common JavaScript functionality for all platform pages with autoscroll - Optimized Version
 
 // Utility functions
-function createParticles() {
+const createParticles = () => {
     const particlesContainer = document.querySelector('.particles');
     if (!particlesContainer) return;
     
@@ -9,14 +9,14 @@ function createParticles() {
     for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 15 + 's';
-        particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 15}s`;
+        particle.style.animationDuration = `${Math.random() * 10 + 10}s`;
         particlesContainer.appendChild(particle);
     }
-}
+};
 
-function scrollToElement(element, offset = 0) {
+const scrollToElement = (element, offset = 0) => {
     if (!element) return;
     
     const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
@@ -26,9 +26,9 @@ function scrollToElement(element, offset = 0) {
         top: offsetPosition,
         behavior: 'smooth'
     });
-}
+};
 
-function toggleIcons(urlInput, pasteBtn, clearBtn) {
+const toggleIcons = (urlInput, pasteBtn, clearBtn) => {
     if (urlInput.value.trim() === '') {
         pasteBtn.style.display = 'flex';
         clearBtn.style.display = 'none';
@@ -36,9 +36,9 @@ function toggleIcons(urlInput, pasteBtn, clearBtn) {
         pasteBtn.style.display = 'none';
         clearBtn.style.display = 'flex';
     }
-}
+};
 
-function validateUrl(urlInput, urlWarning, downloadBtn, platform) {
+const validateUrl = (urlInput, urlWarning, downloadBtn, platform) => {
     const url = urlInput.value.trim().toLowerCase();
     if (url === '') {
         urlWarning.style.display = 'none';
@@ -49,7 +49,9 @@ function validateUrl(urlInput, urlWarning, downloadBtn, platform) {
     const platformUrlPatterns = {
         instagram: ['instagram.com', 'instagr.am'],
         pinterest: ['pinterest.com', 'pin.it'],
-        youtube: ['youtube.com', 'youtu.be', 'm.youtube.com', 'youtube-nocookie.com']
+        tiktok: ['tiktok.com', 'vm.tiktok.com'],
+        facebook: ['facebook.com', 'fb.com', 'fb.watch'],
+        twitter: ['twitter.com', 'x.com']
     };
 
     const domains = platformUrlPatterns[platform];
@@ -63,28 +65,28 @@ function validateUrl(urlInput, urlWarning, downloadBtn, platform) {
         urlWarning.style.display = 'block';
         downloadBtn.disabled = true;
     }
-}
+};
 
 // Enhanced autoscroll functionality
-function autoScrollToLoading() {
+const autoScrollToLoading = () => {
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
         setTimeout(() => {
             scrollToElement(loadingIndicator, 100);
         }, 100);
     }
-}
+};
 
-function autoScrollToResults() {
+const autoScrollToResults = () => {
     const resultContainer = document.getElementById('resultContainer');
     if (resultContainer) {
         setTimeout(() => {
             scrollToElement(resultContainer, 100);
         }, 300);
     }
-}
+};
 
-async function handleFormSubmission(e, platform) {
+const handleFormSubmission = async (e, platform) => {
     e.preventDefault();
     
     const urlInput = document.getElementById('urlInput');
@@ -123,12 +125,12 @@ async function handleFormSubmission(e, platform) {
             body: JSON.stringify(requestBody)
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            throw new Error(data.error || 'An error occurred during download.');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Server error: ${response.status}`);
         }
-        
+
+        const data = await response.json();
         const mediaItems = data.mediaItems || [data];
         displayMedia(mediaItems);
 
@@ -137,16 +139,16 @@ async function handleFormSubmission(e, platform) {
 
     } catch (error) {
         console.error(`Error in ${platform} download:`, error);
-        urlWarning.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message}`;
+        urlWarning.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message || 'An unexpected error occurred'}`;
         urlWarning.style.display = 'block';
     } finally {
         loadingIndicator.style.display = 'none';
         downloadBtn.disabled = false;
         downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download Media';
     }
-}
+};
 
-function displayMedia(mediaItems) {
+const displayMedia = (mediaItems) => {
     const resultContent = document.getElementById('resultContent');
     const resultContainer = document.getElementById('resultContainer');
     if (!resultContent || !resultContainer) {
@@ -212,9 +214,9 @@ function displayMedia(mediaItems) {
     
     resultContent.appendChild(gridContainer);
     resultContainer.style.display = 'flex';
-}
+};
 
-function handleIndividualDownload(downloadUrl, title) {
+const handleIndividualDownload = (downloadUrl, title) => {
     if (!downloadUrl) {
         console.error('No download URL provided');
         return;
@@ -229,7 +231,36 @@ function handleIndividualDownload(downloadUrl, title) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
+};
+
+// Error handling utilities
+const showError = (message, elementId = 'urlWarning') => {
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+        errorElement.style.display = 'block';
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 5000);
+    }
+};
+
+const hideError = (elementId = 'urlWarning') => {
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.style.display = 'none';
+    }
+};
+
+// Loading state management
+const setLoadingState = (isLoading, downloadBtn) => {
+    if (downloadBtn) {
+        downloadBtn.disabled = isLoading;
+        downloadBtn.innerHTML = isLoading 
+            ? '<i class="fas fa-spinner fa-spin"></i> Downloading...' 
+            : '<i class="fas fa-download"></i> Download Media';
+    }
+};
 
 // Initialize common functionality
 document.addEventListener('DOMContentLoaded', function() {
@@ -248,12 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const platform = window.location.pathname.split('/')[1];
-    
-    // Skip common functionality for YouTube - it has its own handler
-    if (platform === 'youtube') {
-        console.log('YouTube page detected - skipping common form handlers');
-        return;
-    }
     
     console.log(`Setting up common handlers for platform: ${platform}`);
     
@@ -275,11 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (err) {
             console.error('Clipboard read error:', err);
-            urlWarning.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Could not access clipboard. Please paste manually.`;
-            urlWarning.style.display = 'block';
-            setTimeout(() => {
-                urlWarning.style.display = 'none';
-            }, 3000);
+            showError('Could not access clipboard. Please paste manually.');
         }
     });
 
@@ -297,3 +318,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
     if (resultContainer) resultContainer.style.display = 'none';
 });
+
+// Export for testing (if needed)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        createParticles,
+        scrollToElement,
+        toggleIcons,
+        validateUrl,
+        handleFormSubmission,
+        displayMedia,
+        handleIndividualDownload,
+        showError,
+        hideError,
+        setLoadingState
+    };
+}

@@ -955,7 +955,6 @@ body {
 
 /* Platform-specific hover effects */
 .platform-tiktok:hover { box-shadow: 0 20px 40px rgba(255, 0, 80, 0.3); }
-.platform-youtube:hover { box-shadow: 0 20px 40px rgba(255, 0, 0, 0.3); }
 .platform-facebook:hover { box-shadow: 0 20px 40px rgba(24, 119, 242, 0.3); }
 .platform-instagram:hover { box-shadow: 0 20px 40px rgba(225, 48, 108, 0.3); }
 .platform-twitter:hover { box-shadow: 0 20px 40px rgba(29, 161, 242, 0.3); }
