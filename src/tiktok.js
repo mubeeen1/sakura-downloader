@@ -1,6 +1,24 @@
 const axios = require('axios');
+const { ttdl } = require('btch-downloader');
 
 async function downloadTikTok(url) {
+    // Try btch-downloader first
+    try {
+        const data = await ttdl(url);
+        if (data.status === true && data.video && data.video.length > 0) {
+            return [{
+                type: 'video',
+                mediaUrl: data.video[0],
+                thumbnail: data.thumbnail || data.video[0],
+                title: data.title || 'TikTok Video',
+                downloadUrl: data.video[0],
+            }];
+        }
+    } catch (err) {
+        console.warn(`btch-downloader failed for TikTok: ${err.message}. Falling back to silvatechinc API.`);
+    }
+
+    // Fallback to silvatechinc API
     const API_URL = `https://api-lite.silvatechinc.my.id/download/tiktokdl?url=${encodeURIComponent(url)}`;
     
     try {

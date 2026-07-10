@@ -281,6 +281,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const platform = window.location.pathname.split('/')[1];
     
     console.log(`Setting up common handlers for platform: ${platform}`);
+
+    // If it's a custom platform with its own JS handler, skip standard setup
+    if (platform === 'youtube' || platform === 'pinterest') {
+        console.log(`Custom handler detected for ${platform}. Skipping common input/form listeners.`);
+        return;
+    }
     
     toggleIcons(urlInput, pasteBtn, clearBtn);
     validateUrl(urlInput, urlWarning, downloadBtn, platform);

@@ -75,7 +75,7 @@ async function runTests() {
 
     // Test unsupported platform
     console.log('\n4. Testing unsupported platform...');
-    const unsupportedResponse = await testEndpoint('/tiktok');
+    const unsupportedResponse = await testEndpoint('/snapchat');
     if (unsupportedResponse.statusCode === 302 || unsupportedResponse.statusCode === 404) {
       console.log('✅ Unsupported platform handled correctly');
     } else {

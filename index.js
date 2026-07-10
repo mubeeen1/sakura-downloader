@@ -14,59 +14,37 @@ class Logger {
   }
 
   detectColors() {
-    try {
-      const chalk = require('chalk');
-      
-      // For chalk v5+, the functions are properties of the default export
-      // Try to access them directly or via default export
+    const identity = (s) => s;
+    const colors = {
+      red: identity,
+      green: identity,
+      yellow: identity,
+      blue: identity,
+      cyan: identity,
+      magenta: identity,
+      gray: identity,
+      white: identity,
+      bold: identity
+    };
+
+    import('chalk').then((chalk) => {
       const chalkInstance = chalk.default || chalk;
-      
-      if (chalkInstance && typeof chalkInstance.red === 'function') {
-        return {
-          red: chalkInstance.red,
-          green: chalkInstance.green,
-          yellow: chalkInstance.yellow,
-          blue: chalkInstance.blue,
-          cyan: chalkInstance.cyan,
-          magenta: chalkInstance.magenta,
-          gray: chalkInstance.gray,
-          white: chalkInstance.white,
-          bold: chalkInstance.bold
-        };
+      if (chalkInstance) {
+        colors.red = chalkInstance.red || identity;
+        colors.green = chalkInstance.green || identity;
+        colors.yellow = chalkInstance.yellow || identity;
+        colors.blue = chalkInstance.blue || identity;
+        colors.cyan = chalkInstance.cyan || identity;
+        colors.magenta = chalkInstance.magenta || identity;
+        colors.gray = chalkInstance.gray || identity;
+        colors.white = chalkInstance.white || identity;
+        colors.bold = chalkInstance.bold || identity;
       }
-      
-      // If we can't find the functions, try to access them as properties
-      if (chalkInstance.red) {
-        return {
-          red: chalkInstance.red,
-          green: chalkInstance.green,
-          yellow: chalkInstance.yellow,
-          blue: chalkInstance.blue,
-          cyan: chalkInstance.cyan,
-          magenta: chalkInstance.magenta,
-          gray: chalkInstance.gray,
-          white: chalkInstance.white,
-          bold: chalkInstance.bold
-        };
-      }
-      
-      throw new Error('Chalk functions not available');
-    } catch (error) {
-      // Fallback to no colors with proper function checking
+    }).catch((error) => {
       console.warn('Chalk not available or incompatible, using fallback colors:', error.message);
-      const identity = (s) => s;
-      return {
-        red: identity,
-        green: identity,
-        yellow: identity,
-        blue: identity,
-        cyan: identity,
-        magenta: identity,
-        gray: identity,
-        white: identity,
-        bold: identity
-      };
-    }
+    });
+
+    return colors;
   }
 
   getTimestamp() {
@@ -238,6 +216,11 @@ app.post("/api/youtube/convert", async (req, res) => {
 
 app.get("/:platform", (req, res) => {
   const platform = req.params.platform.toLowerCase();
+  
+  if (platform === 'favicon.ico') {
+    return res.status(404).end();
+  }
+
   if (!['instagram', 'youtube' ,'pinterest', 'tiktok', "facebook", "twitter"].includes(platform)) {
     logger.warning(`Unsupported platform requested: ${platform}`, 'ROUTING');
     return res.redirect(`/error?message=${encodeURIComponent("Platform not supported")}`);
@@ -282,20 +265,38 @@ app.post("/pinterest/download", async (req, res) => {
 
     logger.info(`Pinterest download requested for: ${url} (type: ${mediaType})`, 'PINTEREST_API');
     
-    // Only use pintScrape for video type, use pinterest module for photos
-    if (mediaType === 'video' && fs.existsSync('./src/pintScrape.js')) {
-      const pintscrape = require('./src/pintScrape');
-      const mediaItems = await pintscrape.downloadPinterestVideo(url);
-      logger.success(`Pinterest video downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
-      res.json({ success: true, mediaItems });
-    } else if (mediaType === 'photo') {
-      const pinterest = require('./src/pinterest');
-      const mediaItems = await pinterest.downloadPinterest(url);
-      logger.success(`Pinterest photo downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
-      res.json({ success: true, mediaItems });
-    } else {
-      throw new Error('Invalid media type or missing scraping module');
+    const pinterest = require('./src/pinterest');
+    let mediaItems = [];
+    let errorToThrow = null;
+
+    try {
+      mediaItems = await pinterest.downloadPinterest(url);
+    } catch (err) {
+      logger.warning(`btch-downloader failed for Pinterest: ${err.message}`, 'PINTEREST_API');
+      errorToThrow = err;
     }
+
+    // If it was supposed to be a video, but we got no items, or we got an image instead of a video,
+    // and pintScrape is available, try pintScrape as a fallback
+    const gotVideo = mediaItems.length > 0 && mediaItems[0].type === 'video';
+    if (mediaType === 'video' && !gotVideo && fs.existsSync('./src/pintScrape.js')) {
+      logger.info('Falling back to RapidAPI pintScrape for Pinterest video', 'PINTEREST_API');
+      try {
+        const pintscrape = require('./src/pintScrape');
+        mediaItems = await pintscrape.downloadPinterestVideo(url);
+      } catch (scrapeErr) {
+        logger.error(scrapeErr, 'PINTEREST_API');
+        // If both failed, throw the primary error or fallback error
+        throw errorToThrow || scrapeErr;
+      }
+    }
+
+    if (!mediaItems || mediaItems.length === 0) {
+      throw errorToThrow || new Error('No media URL found');
+    }
+
+    logger.success(`Pinterest ${mediaType} downloaded: ${mediaItems?.length || 0} items`, 'PINTEREST_API');
+    res.json({ success: true, mediaItems });
   } catch (error) {
     logger.error(error, 'PINTEREST_API');
     const userFriendlyMessage = getUserFriendlyError(error);

@@ -1,40 +1,61 @@
-const axios = require('axios');
+const { twitter } = require('btch-downloader');
 
 async function downloadTwitter(url) {
-    const API_URL = `https://api-lite.silvatechinc.my.id/download/twitter?url=${encodeURIComponent(url)}`;
-    
     try {
-        const response = await axios.get(API_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            },
-            timeout: 30000
-        });
+        const data = await twitter(url);
         
-        const data = response.data;
-        
-        if (data.status === true && data.result.video_hd||data.result.video_sd) {
-            // Return array format to match other platform responses
+        // Select the single best quality URL (prioritizing HD, then SD, then first found URL)
+        let bestUrl = null;
+        if (Array.isArray(data.url)) {
+            // 1. Try to find 'hd' quality first in the objects
+            for (const item of data.url) {
+                if (item && typeof item === 'object' && item.hd && typeof item.hd === 'string' && item.hd.startsWith('http')) {
+                    bestUrl = item.hd;
+                    break;
+                }
+            }
+            // 2. Try to find 'sd' quality as fallback in the objects
+            if (!bestUrl) {
+                for (const item of data.url) {
+                    if (item && typeof item === 'object' && item.sd && typeof item.sd === 'string' && item.sd.startsWith('http')) {
+                        bestUrl = item.sd;
+                        break;
+                    }
+                }
+            }
+            // 3. Fallback to any string URL or first object property in the array
+            if (!bestUrl) {
+                for (const item of data.url) {
+                    if (typeof item === 'string' && item.startsWith('http')) {
+                        bestUrl = item;
+                        break;
+                    } else if (item && typeof item === 'object') {
+                        const val = Object.values(item).find(v => typeof v === 'string' && v.startsWith('http'));
+                        if (val) {
+                            bestUrl = val;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else if (typeof data.url === 'string' && data.url.startsWith('http')) {
+            bestUrl = data.url;
+        }
+
+        if (data.status === true && bestUrl) {
+            // Return array containing a single best-quality item to match other platform responses
             return [{
                 type: 'video',
-                mediaUrl: data.result.video_hd || data.result.video_sd,
-                thumbnail: data.result.thumb || data.result.nowm,
-                title: data.result.desc || 'Twitter Video',
-                downloadUrl:data.result.video_hd || data.result.video_sd,
+                mediaUrl: bestUrl,
+                thumbnail: bestUrl, // fallback
+                title: data.title || 'Twitter Video',
+                downloadUrl: bestUrl,
             }];
         }
         
-        throw new Error("No media URL found");
+        throw new Error("No media URL found. Twitter video might be private, restricted, or unavailable.");
     } catch (error) {
-        if (error.response && error.response.status === 404) {
-            throw new Error("Twitter video not found or private");
-        } else if (error.response && error.response.status === 403) {
-            throw new Error("Access denied to Twitter video");
-        } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-            throw new Error("Service temporarily unavailable");
-        } else {
-            throw new Error(`Twitter download failed: ${error.message}`);
-        }
+        throw new Error(`Twitter download failed: ${error.message}`);
     }
 }
 
